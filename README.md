@@ -1,0 +1,273 @@
+# Quad Star Carousels
+
+> TikTok / Instagram Reels / YouTube Shorts photo carousel generator with platform-safe layout, per-slide font + alignment controls, AI-powered content generation, and one-command export bundling.
+
+Built for [@quad_star](https://www.tiktok.com/@quad_star) — AI tools and prompts channel.
+
+![Format](https://img.shields.io/badge/format-9:16%20vertical-blueviolet)
+![Stack](https://img.shields.io/badge/stack-Next.js%2015%20%2B%20Bun-black)
+![License](https://img.shields.io/badge/license-MIT-green)
+
+---
+
+## What This Is
+
+A fork of [itchernetski/threads-carousel-claude-skill](https://github.com/itchernetski/threads-carousel-claude-skill) extended with:
+
+- **Platform-safe defaults** — content stays clear of TikTok/IG/YT UI overlays
+- **Visual safe-zone overlay** — toggle a debug layer showing where platform UI will cover content
+- **Per-slide font scale + alignment** — granular control via hover overlay on each slide
+- **Global font size slider** — scale all slides together (0.5x ↔ 2.0x)
+- **AI generator CLI** — `bun run new "topic"` writes 7 slides via Claude API
+- **One-command bundling** — `bun run pack <name>` collects exported PNGs into a folder + zip + reveals in Finder
+- **CTA reveal styling** — last slide gets a distinct visual treatment (glow + bordered handle + eyebrow)
+- **Brand config** — single source of truth in `src/brand.ts`, footer renders on every slide
+- **Image upload helper** — `bun run img <path>` copies a file into `public/images/` ready to reference
+
+---
+
+## Quick Start
+
+```bash
+git clone https://github.com/nitesht2/quad-star-carousels.git
+cd quad-star-carousels
+bun install
+bun dev --port 3333
+# open http://localhost:3333
+```
+
+Edit `src/slides.ts` → reload browser → click **Export All** top-right → 7 PNGs land in `~/Downloads/`.
+
+---
+
+## Daily Workflow
+
+### Option A: Hand-write the carousel
+
+```bash
+# 1. Edit content
+$EDITOR src/slides.ts
+
+# 2. Preview live at http://localhost:3333
+# 3. Click "Export All" — 7 PNGs download
+
+# 4. Bundle into named folder + zip + reveal in Finder
+bun run pack my-carousel
+# → ~/Downloads/my-carousel/ (7 PNGs)
+# → ~/Downloads/my-carousel.zip
+```
+
+### Option B: AI generator (Claude API)
+
+```bash
+export ANTHROPIC_API_KEY=sk-ant-...
+bun run new "5 ChatGPT prompts for taxes"
+# Claude writes 7 slides → src/slides.ts updated
+# Refresh http://localhost:3333
+
+# Then same export + pack as Option A
+bun run pack ai-taxes
+```
+
+### Upload
+
+AirDrop the zip to your phone → unzip → open TikTok mobile app → **+** → **Upload** → **Photos** → select 7 in order → caption + post.
+
+---
+
+## Browser Toolbar Controls
+
+Top-level controls (apply to all slides):
+
+| Row | Purpose |
+|---|---|
+| **Format** | TikTok 9:16, Threads 4:5, Square, LinkedIn, Story, Wide 16:9 |
+| **Mode** | Carousel / Presentation |
+| **Safe Zones** | Toggle TikTok / IG / YT UI overlay debug layer |
+| **Font Size** | Global slider 0.5x ↔ 2.0x + reset |
+| **Font** | Minimal / Editorial / Clean / Mono / Condensed |
+| **Surface** | 8 backgrounds (Dark, White, Light, Paper, Gradient, Pastel, Neon, Ember) |
+| **Accent** | 11 pop colors |
+| **Background** | None, Blobs, Grid, Lines, Ruled, Noise, Bignumber, Glow |
+
+### Per-slide overlay (top-right of each slide preview)
+
+| Button | Action |
+|---|---|
+| **−** | Shrink this slide's font |
+| `1.05x` | Current per-slide scale (visible only when modified) |
+| **+** | Grow this slide's font |
+| **↺** | Reset this slide to 1.00x (only appears when modified) |
+| **⬇** | Export this single slide as PNG |
+| **⬅** | Align text left |
+| **⬌** | Align text center (default) |
+| **➡** | Align text right |
+
+Final font size = `global slider × per-slide × (data.fontScale override)`
+
+---
+
+## Brand Config
+
+`src/brand.ts` — single source of truth for handle, tagline, footer behavior:
+
+```ts
+export const BRAND = {
+  name: "Quad Star",
+  handle: "@quad_star",
+  logoSrc: "",
+  showFooter: true,         // handle + tagline at bottom of every slide
+  showPageNumbers: false,   // counter dots
+  tagline: "AI prompts + tools that actually work.",
+};
+```
+
+Footer renders automatically on every slide unless `showFooter: false`.
+
+---
+
+## Slide Defaults
+
+`src/slides.ts` — change these to set defaults that load on every page refresh:
+
+```ts
+export const DEFAULT_FONT: FontId       = "minimal";   // Unbounded
+export const DEFAULT_SURFACE: SurfaceId = "pastel";    // lavender
+export const DEFAULT_ACCENT: AccentId   = "violet";    // accent pop
+export const DEFAULT_PURPOSE: PurposeId = "carousel";
+export const DEFAULT_BG: BgType         = "blobs";     // organic shapes
+export const DEFAULT_FORMAT: FormatId   = "tiktok-9x16";
+```
+
+Override per-slide by adding `fontScale: 0.85` (or any number) to any slide object in the SLIDES array.
+
+---
+
+## Platform Safe Zones
+
+Visual debug overlay toggle (Safe Zones button in toolbar). When ON, each slide preview shows:
+
+- 🔴 **Red dashed** = TikTok blocked areas (top header, bottom caption + nav, right action stack)
+- 🟠 **Orange dashed** = Instagram Reels overlay
+- 🟡 **Yellow dashed** = YouTube Shorts overlay
+
+If your text falls inside a red zone → it'll be covered by TikTok UI when posted. Move/shrink it.
+
+Default padding (`320px 220px 680px 220px`) keeps content inside TikTok-safe area at 1.0x font scale. Bigger scales may push text into unsafe zones — toggle Safe Zones to verify.
+
+Safe zone overlay **never bakes into exported PNGs** (filtered out via `data-safezone` attribute).
+
+---
+
+## CTA Reveal Slide
+
+Slide type `cta` gets distinct visual treatment automatically:
+
+- **TAP TO FOLLOW** eyebrow text + accent color dot at top
+- Highlighted reveal phrase (use `highlight: "Tool Name"` + `highlightStyle: "italic-box"`)
+- **@handle** rendered at 110px in a bordered, glowing box
+- Radial accent glow background
+
+Example:
+
+```ts
+{
+  type: "cta",
+  text: "It is Hermes Agent.\nBy Nous Research.\n\nFree. Open source.\n\nFollow ↓",
+  highlight: "Hermes Agent",
+  highlightStyle: "italic-box",
+  handle: "@quad_star",
+}
+```
+
+---
+
+## Scripts
+
+```bash
+bun dev                       # preview at localhost:3333
+bun dev --port 3334           # second instance for A/B
+bun run new "topic"           # AI-generate 7 slides via Claude API
+bun run img <path>            # copy image to public/images/
+bun run pack <name>           # bundle latest exported PNGs into folder + zip
+bun run build                 # production build
+```
+
+### `bun run new` requirements
+
+- `ANTHROPIC_API_KEY` env var set
+- Uses `claude-sonnet-4-6` model
+- ~$0.01 per generation
+
+### `bun run pack` behavior
+
+- Finds PNGs in `~/Downloads/` matching `0X-(hook|body|cta|image|...).png` from the last 30 seconds
+- Handles Chrome duplicate naming `01-hook (2).png` automatically
+- Strips suffix, moves into `~/Downloads/<name>/`
+- Creates `~/Downloads/<name>.zip`
+- Opens Finder window at the zip
+
+---
+
+## Project Structure
+
+```
+quad-star-carousels/
+├── src/
+│   ├── app/
+│   │   ├── CarouselApp.tsx       # main render engine — toolbar, slides, export
+│   │   ├── layout.tsx            # Next.js layout + font loading
+│   │   └── page.tsx              # entry point
+│   ├── lib/
+│   │   ├── presets.ts            # font/surface/accent/format presets
+│   │   └── types.ts              # SlideData + StylePreset types
+│   ├── brand.ts                  # brand config (handle, tagline, footer toggles)
+│   └── slides.ts                 # SLIDES array + DEFAULTS (edit this for new carousels)
+├── public/
+│   └── images/                   # PNG/JPG/SVG referenced by image slides
+├── scripts/
+│   ├── new-carousel.ts           # AI generator (Claude API)
+│   ├── add-image.ts              # image upload helper
+│   └── pack.ts                   # bundle exported PNGs into folder + zip
+├── package.json
+└── README.md
+```
+
+---
+
+## Stack
+
+| Layer | Tech |
+|---|---|
+| Engine | Next.js 15 + React 19 + TypeScript |
+| Render | html-to-image for PNG export, jspdf for PDF |
+| Fonts | Google Fonts (Unbounded, Playfair Display, Inter, Space Grotesk, JetBrains Mono, Oswald, Caveat) |
+| AI gen | Anthropic Claude Sonnet 4.6 via REST API |
+| Runtime | Bun (works with Node too) |
+
+---
+
+## Credits
+
+- **Engine fork:** [itchernetski/threads-carousel-claude-skill](https://github.com/itchernetski/threads-carousel-claude-skill) (MIT)
+- **AI gen UX inspiration:** [FranciscoMoretti/carousel-generator](https://github.com/FranciscoMoretti/carousel-generator)
+- **Design rules applied:** [pbakaus/impeccable](https://github.com/pbakaus/impeccable)
+- **Illustration style reference:** [helloianneo/ian-xiaohei-illustrations](https://github.com/helloianneo/ian-xiaohei-illustrations)
+
+---
+
+## License
+
+MIT. Original engine MIT. Fork your own branch and ship.
+
+---
+
+## Posted Carousels
+
+| # | Topic | Format | Date |
+|---|---|---|---|
+| 001 | 5 ChatGPT prompts that save 5 hours/week | Pastel + Violet | 2026-06-07 |
+| 002 | 5 free AI tools that replaced $200/mo software | Pastel + Violet | 2026-06-07 |
+| 003 | I let AI run my workday | Pastel + Violet | 2026-06-07 |
+| 004 | 5 reasons I switched from ChatGPT to Claude | Pastel + Violet | 2026-06-07 |
+| 005 | Hermes Agent reveal — runs while you sleep | Pastel + Violet | 2026-06-08 |

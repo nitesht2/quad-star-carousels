@@ -1,0 +1,26 @@
+<svg viewBox="0 0 600 600" xmlns="http://www.w3.org/2000/svg" style="background:#fff">
+  <g fill="none" stroke="#0A0A0A" stroke-width="6" stroke-linecap="round" stroke-linejoin="round">
+    <!-- document -->
+    <path d="M180 130 L400 130 L420 150 L420 460 Q420 470 410 470 L180 470 Q170 470 170 460 L170 140 Q170 130 180 130 Z"/>
+    <path d="M400 130 L400 150 L420 150"/>
+    <!-- doc lines -->
+    <line x1="200" y1="200" x2="380" y2="200"/>
+    <line x1="200" y1="230" x2="350" y2="230"/>
+    <line x1="200" y1="260" x2="380" y2="260"/>
+    <line x1="200" y1="290" x2="320" y2="290"/>
+    <line x1="200" y1="350" x2="380" y2="350"/>
+    <line x1="200" y1="380" x2="340" y2="380"/>
+    <!-- xiaohei sitting writing -->
+    <ellipse cx="465" cy="510" rx="40" ry="46" fill="#0A0A0A" stroke="none"/>
+    <circle cx="455" cy="508" r="5" fill="#fff" stroke="none"/>
+    <circle cx="478" cy="508" r="5" fill="#fff" stroke="none"/>
+    <line x1="450" y1="554" x2="445" y2="590"/>
+    <line x1="478" y1="554" x2="485" y2="590"/>
+    <!-- arm + pencil -->
+    <line x1="430" y1="495" x2="380" y2="450"/>
+    <line x1="380" y1="450" x2="350" y2="430"/>
+  </g>
+  <text x="200" y="100" font-family="Caveat, Comic Sans MS, cursive" font-size="32" fill="#F97316" font-style="italic">exec summary</text>
+  <path d="M310 105 Q330 115 340 130" stroke="#F97316" stroke-width="4" fill="none"/>
+  <polygon points="335,128 343,138 345,128" fill="#F97316"/>
+</svg>

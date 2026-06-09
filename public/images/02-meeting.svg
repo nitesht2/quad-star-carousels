@@ -1,0 +1,24 @@
+<svg viewBox="0 0 600 600" xmlns="http://www.w3.org/2000/svg" style="background:#fff">
+  <g fill="none" stroke="#0A0A0A" stroke-width="6" stroke-linecap="round" stroke-linejoin="round">
+    <!-- microphone body -->
+    <rect x="265" y="140" width="70" height="140" rx="35"/>
+    <line x1="230" y1="240" x2="230" y2="270"/>
+    <line x1="370" y1="240" x2="370" y2="270"/>
+    <path d="M230 270 Q230 330 300 330 Q370 330 370 270" fill="none"/>
+    <line x1="300" y1="330" x2="300" y2="380"/>
+    <line x1="260" y1="385" x2="340" y2="385"/>
+    <!-- xiaohei speaking into mic -->
+    <ellipse cx="180" cy="450" rx="42" ry="50" fill="#0A0A0A" stroke="none"/>
+    <circle cx="170" cy="448" r="5" fill="#fff" stroke="none"/>
+    <circle cx="195" cy="448" r="5" fill="#fff" stroke="none"/>
+    <line x1="165" y1="498" x2="160" y2="540"/>
+    <line x1="195" y1="498" x2="200" y2="540"/>
+    <line x1="220" y1="430" x2="270" y2="380"/>
+    <!-- sound waves -->
+    <path d="M400 420 Q420 430 415 450"/>
+    <path d="M420 410 Q450 425 445 460"/>
+    <path d="M440 400 Q480 420 475 470"/>
+  </g>
+  <text x="380" y="540" font-family="Caveat, Comic Sans MS, cursive" font-size="32" fill="#F97316" font-style="italic">notes!</text>
+  <path d="M420 525 L405 510" stroke="#F97316" stroke-width="4" fill="none"/>
+</svg>

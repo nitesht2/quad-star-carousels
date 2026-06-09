@@ -1,0 +1,23 @@
+<svg viewBox="0 0 600 600" xmlns="http://www.w3.org/2000/svg" style="background:#fff">
+  <g fill="none" stroke="#0A0A0A" stroke-width="6" stroke-linecap="round" stroke-linejoin="round">
+    <!-- envelope -->
+    <path d="M120 220 Q118 215 125 213 L475 213 Q482 215 480 222 L478 410 Q478 418 470 418 L130 418 Q122 418 122 410 Z"/>
+    <path d="M125 218 L300 340 Q302 342 305 340 L478 218"/>
+    <!-- xiaohei character holding letter -->
+    <ellipse cx="300" cy="490" rx="48" ry="55" fill="#0A0A0A" stroke="none"/>
+    <circle cx="285" cy="485" r="6" fill="#fff" stroke="none"/>
+    <circle cx="315" cy="485" r="6" fill="#fff" stroke="none"/>
+    <!-- legs -->
+    <line x1="285" y1="540" x2="278" y2="585"/>
+    <line x1="315" y1="540" x2="322" y2="585"/>
+    <!-- arms holding envelope -->
+    <line x1="260" y1="475" x2="180" y2="420"/>
+    <line x1="340" y1="475" x2="420" y2="420"/>
+  </g>
+  <!-- orange annotation -->
+  <g fill="none" stroke="#F97316" stroke-width="4" stroke-linecap="round" font-family="Caveat, cursive">
+    <path d="M150 160 Q160 145 180 155 L210 175" fill="none"/>
+    <polygon points="205,170 215,180 210,182" fill="#F97316"/>
+  </g>
+  <text x="100" y="135" font-family="Caveat, Comic Sans MS, cursive" font-size="34" fill="#F97316" font-style="italic">URGENT</text>
+</svg>
