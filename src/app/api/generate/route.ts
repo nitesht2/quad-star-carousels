@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 
-// Server-side Claude call — API key never reaches the browser.
-// Set ANTHROPIC_API_KEY in .env.local
+// Server-side LLM call — API keys never reach the browser.
+// Provider picked by env (.env.local), checked in this order:
+//   1. OPENROUTER_API_KEY  → OpenRouter (default model: x-ai/grok-4.1-fast, override with OPENROUTER_MODEL)
+//   2. ANTHROPIC_API_KEY   → Anthropic (claude-sonnet-4-6)
 
 const BRAND_GUIDE = `
 Brand: @quad_star — TikTok channel for AI tools and prompts that save time.
@@ -48,11 +50,56 @@ Rules:
 - Only claim facts present in the topic brief; do not invent stats
 - Return JSON ONLY. No markdown fences. No commentary.`;
 
+async function callOpenRouter(apiKey: string, topic: string): Promise<string> {
+  const model = process.env.OPENROUTER_MODEL || "x-ai/grok-4.1-fast";
+  const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+      "HTTP-Referer": "http://localhost:3333",
+      "X-Title": "quad-star-carousels",
+    },
+    body: JSON.stringify({
+      model,
+      max_tokens: 4096,
+      messages: [
+        { role: "system", content: SYSTEM },
+        { role: "user", content: `Topic: ${topic}\n\nGenerate the 7-slide carousel JSON.` },
+      ],
+    }),
+  });
+  if (!res.ok) throw new Error(`OpenRouter ${res.status}: ${await res.text()}`);
+  const data = await res.json();
+  return data.choices?.[0]?.message?.content || "";
+}
+
+async function callAnthropic(apiKey: string, topic: string): Promise<string> {
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-api-key": apiKey,
+      "anthropic-version": "2023-06-01",
+    },
+    body: JSON.stringify({
+      model: "claude-sonnet-4-6",
+      max_tokens: 4096,
+      system: SYSTEM,
+      messages: [{ role: "user", content: `Topic: ${topic}\n\nGenerate the 7-slide carousel JSON.` }],
+    }),
+  });
+  if (!res.ok) throw new Error(`Anthropic ${res.status}: ${await res.text()}`);
+  const data = await res.json();
+  return data.content?.[0]?.text || "";
+}
+
 export async function POST(req: NextRequest) {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
+  const orKey = process.env.OPENROUTER_API_KEY;
+  const antKey = process.env.ANTHROPIC_API_KEY;
+  if (!orKey && !antKey) {
     return NextResponse.json(
-      { error: "ANTHROPIC_API_KEY not set. Add it to .env.local and restart the dev server." },
+      { error: "No API key set. Add OPENROUTER_API_KEY or ANTHROPIC_API_KEY to .env.local and restart the dev server." },
       { status: 500 }
     );
   }
@@ -68,29 +115,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Topic is required" }, { status: 400 });
   }
 
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-api-key": apiKey,
-      "anthropic-version": "2023-06-01",
-    },
-    body: JSON.stringify({
-      model: "claude-sonnet-4-6",
-      max_tokens: 4096,
-      system: SYSTEM,
-      messages: [{ role: "user", content: `Topic: ${topic}\n\nGenerate the 7-slide carousel JSON.` }],
-    }),
-  });
-
-  if (!res.ok) {
-    const detail = await res.text();
-    return NextResponse.json({ error: `Anthropic API ${res.status}`, detail }, { status: 502 });
+  let raw: string;
+  try {
+    raw = orKey ? await callOpenRouter(orKey, topic) : await callAnthropic(antKey!, topic);
+  } catch (e) {
+    return NextResponse.json({ error: e instanceof Error ? e.message : String(e) }, { status: 502 });
   }
 
-  const data = (await res.json()) as { content: { text: string }[] };
-  let raw = (data.content?.[0]?.text || "").trim();
-  raw = raw.replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/i, "").trim();
+  raw = raw.trim().replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/i, "").trim();
 
   try {
     const slides = JSON.parse(raw);
