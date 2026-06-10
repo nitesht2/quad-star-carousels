@@ -1778,59 +1778,156 @@ const T = {
 
 const LIB_KEY = "qsc-library";
 const CURRENT_KEY = "qsc-current";
+const PROJECTS_KEY = "qsc-projects";
+const ACTIVE_KEY = "qsc-active-id";
 
 type LibraryEntry = { name: string; savedAt: number; slides: SlideData[] };
+type Project = {
+  id: string;
+  name: string;
+  status: "draft" | "posted";
+  createdAt: number;
+  updatedAt: number;
+  slides: SlideData[];
+};
 
 export default function CarouselPage() {
   const [lang, setLang] = useState<Lang>("en");
   const t = T[lang];
-  // Slides are stateful: editable in-browser, AI-generated, autosaved to localStorage
+  // ---- Projects: every carousel is a named project, persisted to localStorage ----
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [activeId, setActiveId] = useState<string | null>(null);
   const [slides, setSlides] = useState<SlideData[]>(SLIDES);
   const [hydrated, setHydrated] = useState(false);
+
   useEffect(() => {
     try {
-      const saved = localStorage.getItem(CURRENT_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) setSlides(parsed);
+      let loaded: Project[] = [];
+      const raw = localStorage.getItem(PROJECTS_KEY);
+      if (raw) loaded = JSON.parse(raw);
+
+      // Migrate pre-sidebar storage (qsc-library entries + qsc-current draft)
+      if (loaded.length === 0) {
+        try {
+          const oldLib = localStorage.getItem(LIB_KEY);
+          if (oldLib) {
+            const entries: LibraryEntry[] = JSON.parse(oldLib);
+            loaded = entries.map((e) => ({
+              id: `mig-${e.savedAt}`,
+              name: e.name,
+              status: "draft" as const,
+              createdAt: e.savedAt,
+              updatedAt: e.savedAt,
+              slides: e.slides,
+            }));
+          }
+          const oldCurrent = localStorage.getItem(CURRENT_KEY);
+          if (oldCurrent) {
+            const cur = JSON.parse(oldCurrent);
+            if (Array.isArray(cur) && cur.length > 0) {
+              loaded.unshift({ id: "mig-current", name: "Working draft", status: "draft", createdAt: Date.now(), updatedAt: Date.now(), slides: cur });
+            }
+          }
+        } catch {}
       }
+
+      if (loaded.length === 0) {
+        loaded = [{ id: "p-default", name: "My first carousel", status: "draft", createdAt: Date.now(), updatedAt: Date.now(), slides: SLIDES }];
+      }
+
+      const savedActive = localStorage.getItem(ACTIVE_KEY);
+      const active = loaded.find((p) => p.id === savedActive) ?? loaded[0];
+      setProjects(loaded);
+      setActiveId(active.id);
+      setSlides(active.slides);
     } catch {}
     setHydrated(true);
   }, []);
+
+  // Sync working slides into the active project + persist everything
   useEffect(() => {
-    if (!hydrated) return;
-    try { localStorage.setItem(CURRENT_KEY, JSON.stringify(slides)); } catch {}
-  }, [slides, hydrated]);
+    if (!hydrated || !activeId) return;
+    setProjects((prev) => {
+      const next = prev.map((p) => (p.id === activeId ? { ...p, slides, updatedAt: Date.now() } : p));
+      try {
+        localStorage.setItem(PROJECTS_KEY, JSON.stringify(next));
+        localStorage.setItem(ACTIVE_KEY, activeId);
+      } catch {}
+      return next;
+    });
+  }, [slides, hydrated, activeId]);
+
+  const switchProject = useCallback((id: string) => {
+    setProjects((prev) => {
+      const target = prev.find((p) => p.id === id);
+      if (target) {
+        setActiveId(id);
+        setSlides(target.slides);
+        try { localStorage.setItem(ACTIVE_KEY, id); } catch {}
+      }
+      return prev;
+    });
+  }, []);
+
+  const newProject = useCallback(() => {
+    const name = window.prompt("New carousel name:", "Untitled carousel");
+    if (!name?.trim()) return;
+    const p: Project = { id: `p-${Date.now()}`, name: name.trim(), status: "draft", createdAt: Date.now(), updatedAt: Date.now(), slides: SLIDES };
+    setProjects((prev) => [p, ...prev]);
+    setActiveId(p.id);
+    setSlides(p.slides);
+  }, []);
+
+  const duplicateProject = useCallback((id: string) => {
+    setProjects((prev) => {
+      const src = prev.find((p) => p.id === id);
+      if (!src) return prev;
+      const copy: Project = { ...src, id: `p-${Date.now()}`, name: `${src.name} copy`, status: "draft", createdAt: Date.now(), updatedAt: Date.now() };
+      setActiveId(copy.id);
+      setSlides(copy.slides);
+      return [copy, ...prev];
+    });
+  }, []);
+
+  const renameProject = useCallback((id: string) => {
+    setProjects((prev) => {
+      const target = prev.find((p) => p.id === id);
+      const name = window.prompt("Rename carousel:", target?.name ?? "");
+      if (!name?.trim()) return prev;
+      const next = prev.map((p) => (p.id === id ? { ...p, name: name.trim() } : p));
+      try { localStorage.setItem(PROJECTS_KEY, JSON.stringify(next)); } catch {}
+      return next;
+    });
+  }, []);
+
+  const deleteProject = useCallback((id: string) => {
+    if (!window.confirm("Delete this carousel? This cannot be undone.")) return;
+    setProjects((prev) => {
+      let next = prev.filter((p) => p.id !== id);
+      if (next.length === 0) {
+        next = [{ id: `p-${Date.now()}`, name: "My first carousel", status: "draft", createdAt: Date.now(), updatedAt: Date.now(), slides: SLIDES }];
+      }
+      if (id === activeId) {
+        setActiveId(next[0].id);
+        setSlides(next[0].slides);
+      }
+      try { localStorage.setItem(PROJECTS_KEY, JSON.stringify(next)); } catch {}
+      return next;
+    });
+  }, [activeId]);
+
+  const toggleStatus = useCallback((id: string) => {
+    setProjects((prev) => {
+      const next = prev.map((p) => (p.id === id ? { ...p, status: (p.status === "posted" ? "draft" : "posted") as Project["status"] } : p));
+      try { localStorage.setItem(PROJECTS_KEY, JSON.stringify(next)); } catch {}
+      return next;
+    });
+  }, []);
+
+  const activeProject = projects.find((p) => p.id === activeId);
 
   // Edit panel
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
-
-  // Library
-  const [library, setLibrary] = useState<LibraryEntry[]>([]);
-  const [showLibrary, setShowLibrary] = useState(false);
-  useEffect(() => {
-    try {
-      const lib = localStorage.getItem(LIB_KEY);
-      if (lib) setLibrary(JSON.parse(lib));
-    } catch {}
-  }, []);
-  const persistLibrary = useCallback((entries: LibraryEntry[]) => {
-    setLibrary(entries);
-    try { localStorage.setItem(LIB_KEY, JSON.stringify(entries)); } catch {}
-  }, []);
-  const saveToLibrary = useCallback(() => {
-    const name = window.prompt("Save carousel as:", "");
-    if (!name?.trim()) return;
-    const entry: LibraryEntry = { name: name.trim(), savedAt: Date.now(), slides };
-    persistLibrary([entry, ...library.filter((e) => e.name !== entry.name)]);
-  }, [slides, library, persistLibrary]);
-  const loadFromLibrary = useCallback((entry: LibraryEntry) => {
-    setSlides(entry.slides);
-    setShowLibrary(false);
-  }, []);
-  const deleteFromLibrary = useCallback((name: string) => {
-    persistLibrary(library.filter((e) => e.name !== name));
-  }, [library, persistLibrary]);
 
   // AI generation
   const [genTopic, setGenTopic] = useState("");
@@ -1896,6 +1993,10 @@ export default function CarouselPage() {
   const canvasH = FORMAT_PRESETS[formatId].h;
   const preset = composePreset(FONT_STYLES[fontId], SURFACES[surfaceId], ACCENTS[accentId], purposeId);
 
+  // Live dims via ref so capture stays correct when format changes mid multi-format export
+  const dimsRef = useRef({ w: canvasW, h: canvasH, bg: preset.bg });
+  dimsRef.current = { w: canvasW, h: canvasH, bg: preset.bg };
+
   const captureSlide = useCallback(
     async (index: number): Promise<string | null> => {
       const el = offscreenRefs.current[index];
@@ -1906,11 +2007,11 @@ export default function CarouselPage() {
       await new Promise<void>((r) => requestAnimationFrame(() => r()));
 
       const opts = {
-        width: canvasW,
-        height: canvasH,
+        width: dimsRef.current.w,
+        height: dimsRef.current.h,
         pixelRatio: 2,
         cacheBust: true,
-        backgroundColor: preset.bg,
+        backgroundColor: dimsRef.current.bg,
         skipFonts: true,
         filter: (node: HTMLElement) => {
           if (node.tagName === "LINK") {
@@ -1936,8 +2037,54 @@ export default function CarouselPage() {
       el.style.zIndex = "-1";
       return dataUrl;
     },
-    [preset.bg, canvasW, canvasH]
+    []
   );
+
+  // One click → same carousel at TikTok 9:16 + IG 4:5 + Square 1:1, foldered in one zip
+  const exportAllFormats = useCallback(async () => {
+    const TARGETS: { id: FormatId; folder: string }[] = [
+      { id: "tiktok-9x16", folder: "tiktok-9x16" },
+      { id: "threads-4x5", folder: "instagram-4x5" },
+      { id: "instagram-square", folder: "square-1x1" },
+    ];
+    setExporting(true);
+    const { default: JSZip } = await import("jszip");
+    const zip = new JSZip();
+    const prevFormat = formatId;
+    try {
+      for (const target of TARGETS) {
+        setFormatId(target.id);
+        // Let React re-render offscreen slides at the new canvas size
+        await new Promise((r) => setTimeout(r, 700));
+        for (let i = 0; i < slides.length; i++) {
+          setExportStatus(`${target.folder} ${i + 1}/${slides.length}`);
+          const dataUrl = await captureSlide(i);
+          if (!dataUrl) continue;
+          zip.file(
+            `${target.folder}/${String(i + 1).padStart(2, "0")}-${slides[i].type}.png`,
+            dataUrl.split(",")[1],
+            { base64: true }
+          );
+          await new Promise((r) => setTimeout(r, 100));
+        }
+      }
+      setExportStatus("Zipping...");
+      const blob = await zip.generateAsync({ type: "blob" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      const d = new Date();
+      const stamp = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getDate()).padStart(2, "0")}`;
+      link.download = `carousel-all-formats-${stamp}.zip`;
+      link.href = url;
+      link.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      setExportStatus("Done!");
+    } finally {
+      setFormatId(prevFormat);
+      setExporting(false);
+      setTimeout(() => setExportStatus(""), 2000);
+    }
+  }, [captureSlide, slides, formatId]);
 
   const exportSlide = useCallback(
     async (index: number) => {
@@ -2016,7 +2163,70 @@ export default function CarouselPage() {
   return (
     <CanvasSizeContext.Provider value={{ w: canvasW, h: canvasH }}>
     <FontScaleContext.Provider value={fontScale}>
-    <div suppressHydrationWarning style={{ minHeight: "100vh", padding: 32 }}>
+    <div suppressHydrationWarning style={{ minHeight: "100vh", display: "flex" }}>
+      {/* ---- Project Sidebar ---- */}
+      <aside style={{ width: 248, flexShrink: 0, borderRight: "1px solid #E2DACB", background: "#FBF8F2", padding: "20px 14px", display: "flex", flexDirection: "column", gap: 10, position: "sticky", top: 0, height: "100vh", overflowY: "auto" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 6px" }}>
+          <span style={{ fontSize: 12, fontWeight: 800, color: "#8A8378", letterSpacing: "0.08em", textTransform: "uppercase" }}>Projects</span>
+          <button
+            onClick={newProject}
+            title="New carousel"
+            className="tb-btn"
+            style={{ width: 26, height: 26, borderRadius: 7, border: "none", background: "#E5683C", color: "#fff", cursor: "pointer", fontSize: 16, fontWeight: 700, lineHeight: 1 }}
+          >+</button>
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+          {projects.map((p) => {
+            const isActive = p.id === activeId;
+            return (
+              <div
+                key={p.id}
+                onClick={() => switchProject(p.id)}
+                style={{
+                  borderRadius: 10,
+                  padding: "10px 10px 8px",
+                  cursor: "pointer",
+                  background: isActive ? "#FFFFFF" : "transparent",
+                  border: isActive ? "1px solid #E5683C" : "1px solid transparent",
+                  boxShadow: isActive ? "0 1px 4px rgba(229,104,60,0.15)" : "none",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <span style={{ width: 7, height: 7, borderRadius: "50%", flexShrink: 0, background: p.status === "posted" ? "#3F9C5C" : "#C4BCAE" }} title={p.status} />
+                  <span style={{ fontSize: 13, fontWeight: isActive ? 700 : 500, color: "#1A1714", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>
+                    {p.name}
+                  </span>
+                </div>
+                <div style={{ fontSize: 10.5, color: "#8A8378", marginTop: 3, marginLeft: 13 }}>
+                  {p.slides.length} slides · {new Date(p.updatedAt).toLocaleDateString()}
+                </div>
+                <div style={{ display: "flex", gap: 3, marginTop: 6, marginLeft: 10 }}>
+                  {[
+                    { icon: "✎", title: "Rename", fn: () => renameProject(p.id) },
+                    { icon: "⧉", title: "Duplicate", fn: () => duplicateProject(p.id) },
+                    { icon: p.status === "posted" ? "↩" : "✓", title: p.status === "posted" ? "Mark as draft" : "Mark as posted", fn: () => toggleStatus(p.id) },
+                    { icon: "✕", title: "Delete", fn: () => deleteProject(p.id) },
+                  ].map((a) => (
+                    <button
+                      key={a.title}
+                      title={a.title}
+                      onClick={(e) => { e.stopPropagation(); a.fn(); }}
+                      style={{ width: 24, height: 24, borderRadius: 6, border: "1px solid #E2DACB", background: "#FFFFFF", color: a.icon === "✕" ? "#C2402A" : "#5C564C", cursor: "pointer", fontSize: 11, padding: 0 }}
+                    >{a.icon}</button>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        <div style={{ marginTop: "auto", padding: "10px 6px 0", fontSize: 10.5, color: "#B0A998", lineHeight: 1.5 }}>
+          {activeProject ? `Editing: ${activeProject.name}` : ""}
+          <br />Autosaved locally.
+        </div>
+      </aside>
+
+      {/* ---- Main column ---- */}
+      <div style={{ flex: 1, minWidth: 0, padding: 32 }}>
       {/* Toolbar */}
       <div style={{ marginBottom: 32, background: "#FBF8F2", border: "1px solid #E2DACB", borderRadius: 16, padding: 24, boxShadow: "0 1px 3px rgba(26,23,20,0.06)" }}>
         {/* Title + Export + Lang toggle */}
@@ -2031,8 +2241,11 @@ export default function CarouselPage() {
             </div>
           </div>
           <div style={{ marginLeft: "auto", display: "flex", gap: 8, alignItems: "center" }}>
-            <button onClick={exportPdf} disabled={exporting} style={{ padding: "8px 20px", minWidth: 120, minHeight: 36, borderRadius: 8, border: "1px solid #D8D0C0", background: exporting ? "#EBE5D9" : "transparent", color: exporting ? "#8A8378" : "#2E2A24", cursor: exporting ? "not-allowed" : "pointer", fontSize: 14, fontWeight: 600, fontVariantNumeric: "tabular-nums" }} className="tb-btn">
-              {exporting ? exportStatus : "Export PDF"}
+            <button onClick={exportPdf} disabled={exporting} style={{ padding: "8px 16px", minHeight: 36, borderRadius: 8, border: "1px solid #D8D0C0", background: "transparent", color: exporting ? "#8A8378" : "#2E2A24", cursor: exporting ? "not-allowed" : "pointer", fontSize: 13, fontWeight: 600 }} className="tb-btn">
+              PDF
+            </button>
+            <button onClick={exportAllFormats} disabled={exporting} title="Export TikTok 9:16 + Instagram 4:5 + Square 1:1 in one zip" style={{ padding: "8px 16px", minHeight: 36, borderRadius: 8, border: "1px solid #E5683C", background: "transparent", color: exporting ? "#8A8378" : "#E5683C", cursor: exporting ? "not-allowed" : "pointer", fontSize: 13, fontWeight: 700 }} className="tb-btn">
+              All Formats
             </button>
             <button onClick={exportAll} disabled={exporting} style={{ padding: "8px 24px", minWidth: 130, minHeight: 36, borderRadius: 8, border: "none", background: exporting ? "#EBE5D9" : "#E5683C", color: exporting ? "#8A8378" : "#fff", cursor: exporting ? "not-allowed" : "pointer", fontSize: 14, fontWeight: 700, fontVariantNumeric: "tabular-nums" }} className="tb-btn">
               {exporting ? exportStatus : "Export ZIP"}
@@ -2133,53 +2346,11 @@ export default function CarouselPage() {
               >
                 {generating ? "Writing..." : "✦ Generate"}
               </button>
-              <button
-                onClick={saveToLibrary}
-                style={{ padding: "9px 14px", minHeight: 36, borderRadius: 8, border: "1px solid #D8D0C0", background: "transparent", color: "#2E2A24", cursor: "pointer", fontSize: 13, whiteSpace: "nowrap" }}
-                className="tb-btn"
-                title="Save current carousel to library"
-              >
-                Save
-              </button>
-              <button
-                onClick={() => setShowLibrary((v) => !v)}
-                style={{ padding: "9px 14px", minHeight: 36, borderRadius: 8, border: showLibrary ? "2px solid #6366F1" : "1px solid #D8D0C0", background: showLibrary ? "#E5683C" : "transparent", color: showLibrary ? "#fff" : "#2E2A24", cursor: "pointer", fontSize: 13, whiteSpace: "nowrap" }}
-                className="tb-btn"
-                title="Open carousel library"
-              >
-                Library ({library.length})
-              </button>
             </div>
           </div>
           {genError && (
-            <div style={{ marginLeft: 100, fontSize: 12, color: "#f87171" }}>
+            <div style={{ marginLeft: 100, fontSize: 12, color: "#C2402A" }}>
               {genError}
-            </div>
-          )}
-          {showLibrary && (
-            <div style={{ marginLeft: 100, display: "flex", flexDirection: "column", gap: 6, maxWidth: 720, background: "#FFFFFF", border: "1px solid #D8D0C0", borderRadius: 10, padding: 12 }}>
-              {library.length === 0 && <span style={{ fontSize: 12, color: "#8A8378" }}>Library empty. Click Save to store the current carousel.</span>}
-              {library.map((entry) => (
-                <div key={entry.name} style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <button
-                    onClick={() => loadFromLibrary(entry)}
-                    style={{ flex: 1, textAlign: "left", padding: "8px 12px", borderRadius: 6, border: "1px solid #D8D0C0", background: "#FBF8F2", color: "#1A1714", cursor: "pointer", fontSize: 13 }}
-                    title="Load this carousel"
-                  >
-                    {entry.name}
-                    <span style={{ color: "#666", marginLeft: 10, fontSize: 11 }}>
-                      {new Date(entry.savedAt).toLocaleDateString()} · {entry.slides.length} slides
-                    </span>
-                  </button>
-                  <button
-                    onClick={() => deleteFromLibrary(entry.name)}
-                    style={{ padding: "8px 10px", borderRadius: 6, border: "1px solid #442222", background: "transparent", color: "#f87171", cursor: "pointer", fontSize: 12 }}
-                    title="Delete from library"
-                  >
-                    ✕
-                  </button>
-                </div>
-              ))}
             </div>
           )}
           </>)}
@@ -2535,6 +2706,7 @@ export default function CarouselPage() {
           </div>
         </div>
       )}
+      </div>
     </div>
     </FontScaleContext.Provider>
     </CanvasSizeContext.Provider>

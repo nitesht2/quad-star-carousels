@@ -15,9 +15,9 @@ Built for [@quad_star](https://www.tiktok.com/@quad_star) — AI tools and promp
 **Quad Studio** is a self-hosted carousel editor. It started as a fork of [itchernetski/threads-carousel-claude-skill](https://github.com/itchernetski/threads-carousel-claude-skill) (MIT) and has been substantially extended into its own tool:
 
 **In-browser editing (no code required)**
+- **Project sidebar** — every carousel is a named project: create, switch, duplicate, rename, delete, mark as posted. Autosaved to localStorage.
 - **Tabbed editor** — Content / Style / Layout tabs instead of a wall of controls
 - **Click-to-edit** — ✎ on any slide opens an edit panel (text / title / highlight / handle) with prev/next nav
-- **Carousel library** — save / load / delete named carousels, with autosave to localStorage
 - **AI Generate** — type a topic, get 7 slides; supports OpenRouter (Grok default) or Anthropic, key stays server-side
 
 **Layout + platform safety**
@@ -28,6 +28,7 @@ Built for [@quad_star](https://www.tiktok.com/@quad_star) — AI tools and promp
 
 **Export + brand**
 - **One-click ZIP** — Export ZIP bundles all slides into a single date-stamped download
+- **All Formats export** — one click renders the same carousel at TikTok 9:16 + Instagram 4:5 + Square 1:1, foldered in a single zip
 - **CTA reveal styling** — last slide gets a distinct visual treatment (glow + bordered handle)
 - **Brand config** — single source of truth in `src/brand.ts`, footer renders on every slide
 - **CLI tools** — `bun run new "topic"`, `bun run img <path>`, `bun run pack <name>` for terminal-driven workflows
