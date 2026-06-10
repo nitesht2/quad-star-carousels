@@ -1323,7 +1323,7 @@ function SlideComparison({
       <div style={{ display: "flex", gap: 32, position: "relative", flex: 1, alignItems: "stretch" }}>
         {[
           { label: data.leftLabel || "", items: data.leftItems || [], color: "#EF4444" },
-          { label: data.rightLabel || "", items: data.rightItems || [], color: "#22C55E" },
+          { label: data.rightLabel || "", items: data.rightItems || [], color: "#E5683C" },
         ].map((col, ci) => (
           <div
             key={ci}
@@ -1711,7 +1711,7 @@ type Lang = "en" | "ru";
 
 const T = {
   en: {
-    appTitle: "Threads Carousel",
+    appTitle: "Quad Studio",
     rowFont: "Font",
     rowSurface: "Surface",
     rowAccent: "Accent",
@@ -1741,7 +1741,7 @@ const T = {
     } as Record<AccentId, string>,
   },
   ru: {
-    appTitle: "Threads Carousel",
+    appTitle: "Quad Studio",
     rowFont: "Шрифт",
     rowSurface: "Фон",
     rowAccent: "Акцент",
@@ -1868,6 +1868,7 @@ export default function CarouselPage() {
   const [slideScales, setSlideScales] = useState<Record<number, number>>({});
   const [slideAligns, setSlideAligns] = useState<Record<number, AlignT>>({});
   const [showSafeZones, setShowSafeZones] = useState(false);
+  const [activeTab, setActiveTab] = useState<"content" | "style" | "layout">("content");
   const setSlideAlign = useCallback((i: number, a: AlignT) => {
     setSlideAligns((prev) => ({ ...prev, [i]: a }));
   }, []);
@@ -2017,44 +2018,24 @@ export default function CarouselPage() {
     <FontScaleContext.Provider value={fontScale}>
     <div suppressHydrationWarning style={{ minHeight: "100vh", padding: 32 }}>
       {/* Toolbar */}
-      <div style={{ marginBottom: 32 }}>
+      <div style={{ marginBottom: 32, background: "#FBF8F2", border: "1px solid #E2DACB", borderRadius: 16, padding: 24, boxShadow: "0 1px 3px rgba(26,23,20,0.06)" }}>
         {/* Title + Export + Lang toggle */}
         <div style={{ display: "flex", alignItems: "flex-start", gap: 16, marginBottom: 20 }}>
-          <div>
-            <h1 style={{ fontSize: 20, fontWeight: 700, margin: 0, textWrap: "balance" } as React.CSSProperties}>{t.appTitle}</h1>
-            <div style={{ fontSize: 11, color: "#888", marginTop: 2 }}>
-              {FORMAT_PRESETS[formatId].name} — {canvasW}×{canvasH}
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <div style={{ width: 38, height: 38, borderRadius: 10, background: "#E5683C", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 800, fontSize: 20, fontFamily: "var(--font-playfair)" }}>Q</div>
+            <div>
+              <h1 style={{ fontSize: 20, fontWeight: 800, margin: 0, letterSpacing: "-0.02em", color: "#1A1714" } as React.CSSProperties}>{t.appTitle}</h1>
+              <div style={{ fontSize: 11, color: "#8A8378", marginTop: 2 }}>
+                {FORMAT_PRESETS[formatId].name} — {canvasW}×{canvasH}
+              </div>
             </div>
           </div>
           <div style={{ marginLeft: "auto", display: "flex", gap: 8, alignItems: "center" }}>
-            {/* Lang toggle */}
-            <div style={{ display: "flex", borderRadius: 8, overflow: "hidden", border: "1px solid #333" }}>
-              {(["en", "ru"] as Lang[]).map((l) => (
-                <button
-                  key={l}
-                  onClick={() => setLang(l)}
-                  className="tb-btn"
-                  style={{
-                    padding: "9px 12px",
-                    minHeight: 36,
-                    border: "none",
-                    background: lang === l ? "#555" : "transparent",
-                    color: lang === l ? "#fff" : "#888",
-                    cursor: "pointer",
-                    fontSize: 11,
-                    fontWeight: 600,
-                    textTransform: "uppercase",
-                  }}
-                >
-                  {l}
-                </button>
-              ))}
-            </div>
-            <button onClick={exportPdf} disabled={exporting} style={{ padding: "8px 20px", minWidth: 120, minHeight: 36, borderRadius: 8, border: "none", background: exporting ? "#444" : "#6366F1", color: "#fff", cursor: exporting ? "not-allowed" : "pointer", fontSize: 14, fontWeight: 600, fontVariantNumeric: "tabular-nums" }} className="tb-btn">
-              {exporting ? exportStatus : t.btnPdf}
+            <button onClick={exportPdf} disabled={exporting} style={{ padding: "8px 20px", minWidth: 120, minHeight: 36, borderRadius: 8, border: "1px solid #D8D0C0", background: exporting ? "#EBE5D9" : "transparent", color: exporting ? "#8A8378" : "#2E2A24", cursor: exporting ? "not-allowed" : "pointer", fontSize: 14, fontWeight: 600, fontVariantNumeric: "tabular-nums" }} className="tb-btn">
+              {exporting ? exportStatus : "Export PDF"}
             </button>
-            <button onClick={exportAll} disabled={exporting} style={{ padding: "8px 20px", minWidth: 110, minHeight: 36, borderRadius: 8, border: "none", background: exporting ? "#444" : "#22C55E", color: "#fff", cursor: exporting ? "not-allowed" : "pointer", fontSize: 14, fontWeight: 600, fontVariantNumeric: "tabular-nums" }} className="tb-btn">
-              {exporting ? exportStatus : t.btnAll}
+            <button onClick={exportAll} disabled={exporting} style={{ padding: "8px 24px", minWidth: 130, minHeight: 36, borderRadius: 8, border: "none", background: exporting ? "#EBE5D9" : "#E5683C", color: exporting ? "#8A8378" : "#fff", cursor: exporting ? "not-allowed" : "pointer", fontSize: 14, fontWeight: 700, fontVariantNumeric: "tabular-nums" }} className="tb-btn">
+              {exporting ? exportStatus : "Export ZIP"}
             </button>
           </div>
         </div>
@@ -2063,45 +2044,77 @@ export default function CarouselPage() {
         {/* key={lang} causes remount → tbFadeIn animation plays on language switch */}
         <div key={lang} className="tb-lang-fade" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
 
+          {/* Tabs */}
+          <div style={{ display: "flex", gap: 2, marginBottom: 6, borderBottom: "1px solid #E2DACB" }}>
+            {([["content", "Content"], ["style", "Style"], ["layout", "Layout"]] as const).map(([id, label]) => (
+              <button
+                key={id}
+                onClick={() => setActiveTab(id)}
+                className="tb-btn"
+                style={{
+                  padding: "10px 24px",
+                  border: "none",
+                  borderBottom: activeTab === id ? "3px solid #E5683C" : "3px solid transparent",
+                  background: "transparent",
+                  color: activeTab === id ? "#1A1714" : "#8A8378",
+                  cursor: "pointer",
+                  fontSize: 13,
+                  fontWeight: 700,
+                  letterSpacing: "0.02em",
+                }}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+
+
+          {activeTab === "layout" && (<>
           {/* Format */}
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <span style={{ fontSize: 11, color: "#666", width: 90, flexShrink: 0 }}>{t.rowFormat}</span>
+            <span style={{ fontSize: 11, color: "#8A8378", width: 90, flexShrink: 0 }}>{t.rowFormat}</span>
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
               {Object.values(FORMAT_PRESETS).map((f) => (
-                <button key={f.id} onClick={() => setFormatId(f.id)} title={f.platform} style={{ padding: "9px 14px", minHeight: 36, borderRadius: 8, border: formatId === f.id ? "2px solid #06B6D4" : "1px solid #333", background: formatId === f.id ? "#06B6D4" : "transparent", color: "#fff", cursor: "pointer", fontSize: 12, fontWeight: 500 }} className="tb-btn">
+                <button key={f.id} onClick={() => setFormatId(f.id)} title={f.platform} style={{ padding: "9px 14px", minHeight: 36, borderRadius: 8, border: formatId === f.id ? "2px solid #06B6D4" : "1px solid #D8D0C0", background: formatId === f.id ? "#E5683C" : "transparent", color: formatId === f.id ? "#fff" : "#2E2A24", cursor: "pointer", fontSize: 12, fontWeight: 500 }} className="tb-btn">
                   {f.name}
                 </button>
               ))}
             </div>
           </div>
+          </>)}
 
+          {activeTab === "layout" && (<>
           {/* Mode */}
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <span style={{ fontSize: 11, color: "#666", width: 90, flexShrink: 0 }}>{t.rowMode}</span>
+            <span style={{ fontSize: 11, color: "#8A8378", width: 90, flexShrink: 0 }}>{t.rowMode}</span>
             <div style={{ display: "flex", gap: 6 }}>
               {(["carousel", "presentation"] as PurposeId[]).map((p) => (
-                <button key={p} onClick={() => setPurposeId(p)} style={{ padding: "9px 14px", minWidth: 110, minHeight: 36, borderRadius: 8, border: purposeId === p ? "2px solid #F59E0B" : "1px solid #333", background: purposeId === p ? "#F59E0B" : "transparent", color: "#fff", cursor: "pointer", fontSize: 12, fontWeight: 500 }} className="tb-btn">
+                <button key={p} onClick={() => setPurposeId(p)} style={{ padding: "9px 14px", minWidth: 110, minHeight: 36, borderRadius: 8, border: purposeId === p ? "2px solid #F59E0B" : "1px solid #D8D0C0", background: purposeId === p ? "#E5683C" : "transparent", color: purposeId === p ? "#fff" : "#2E2A24", cursor: "pointer", fontSize: 12, fontWeight: 500 }} className="tb-btn">
                   {t.modes[p]}
                 </button>
               ))}
             </div>
           </div>
+          </>)}
 
+          {activeTab === "style" && (<>
           {/* Font */}
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <span style={{ fontSize: 11, color: "#666", width: 90, flexShrink: 0 }}>{t.rowFont}</span>
+            <span style={{ fontSize: 11, color: "#8A8378", width: 90, flexShrink: 0 }}>{t.rowFont}</span>
             <div style={{ display: "flex", gap: 6 }}>
               {Object.values(FONT_STYLES).map((f) => (
-                <button key={f.id} onClick={() => setFontId(f.id)} style={{ padding: "9px 14px", minHeight: 36, borderRadius: 8, border: fontId === f.id ? "2px solid #6366F1" : "1px solid #333", background: fontId === f.id ? "#6366F1" : "transparent", color: "#fff", cursor: "pointer", fontSize: 12, fontWeight: 500 }} className="tb-btn">
+                <button key={f.id} onClick={() => setFontId(f.id)} style={{ padding: "9px 14px", minHeight: 36, borderRadius: 8, border: fontId === f.id ? "2px solid #6366F1" : "1px solid #D8D0C0", background: fontId === f.id ? "#E5683C" : "transparent", color: fontId === f.id ? "#fff" : "#2E2A24", cursor: "pointer", fontSize: 12, fontWeight: 500 }} className="tb-btn">
                   {f.name}
                 </button>
               ))}
             </div>
           </div>
+          </>)}
 
+          {activeTab === "content" && (<>
           {/* AI Generate + Library */}
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <span style={{ fontSize: 11, color: "#666", width: 90, flexShrink: 0 }}>AI Generate</span>
+            <span style={{ fontSize: 11, color: "#8A8378", width: 90, flexShrink: 0 }}>AI Generate</span>
             <div style={{ display: "flex", gap: 8, flex: 1, maxWidth: 720, alignItems: "center" }}>
               <input
                 type="text"
@@ -2110,19 +2123,19 @@ export default function CarouselPage() {
                 onKeyDown={(e) => { if (e.key === "Enter") generateWithAI(); }}
                 placeholder='Topic, e.g. "5 ChatGPT prompts for job hunting"'
                 disabled={generating}
-                style={{ flex: 1, padding: "9px 14px", minHeight: 36, borderRadius: 8, border: "1px solid #333", background: "#1a1a1a", color: "#fff", fontSize: 13, outline: "none" }}
+                style={{ flex: 1, padding: "9px 14px", minHeight: 36, borderRadius: 8, border: "1px solid #D8D0C0", background: "#FFFFFF", color: "#1A1714", fontSize: 13, outline: "none" }}
               />
               <button
                 onClick={generateWithAI}
                 disabled={generating || !genTopic.trim()}
-                style={{ padding: "9px 18px", minHeight: 36, borderRadius: 8, border: "none", background: generating ? "#444" : "#A855F7", color: "#fff", cursor: generating ? "wait" : "pointer", fontSize: 13, fontWeight: 600, whiteSpace: "nowrap" }}
+                style={{ padding: "9px 18px", minHeight: 36, borderRadius: 8, border: "none", background: generating ? "#444" : "#E5683C", color: "#fff", cursor: generating ? "wait" : "pointer", fontSize: 13, fontWeight: 600, whiteSpace: "nowrap" }}
                 className="tb-btn"
               >
                 {generating ? "Writing..." : "✦ Generate"}
               </button>
               <button
                 onClick={saveToLibrary}
-                style={{ padding: "9px 14px", minHeight: 36, borderRadius: 8, border: "1px solid #333", background: "transparent", color: "#fff", cursor: "pointer", fontSize: 13, whiteSpace: "nowrap" }}
+                style={{ padding: "9px 14px", minHeight: 36, borderRadius: 8, border: "1px solid #D8D0C0", background: "transparent", color: "#2E2A24", cursor: "pointer", fontSize: 13, whiteSpace: "nowrap" }}
                 className="tb-btn"
                 title="Save current carousel to library"
               >
@@ -2130,7 +2143,7 @@ export default function CarouselPage() {
               </button>
               <button
                 onClick={() => setShowLibrary((v) => !v)}
-                style={{ padding: "9px 14px", minHeight: 36, borderRadius: 8, border: showLibrary ? "2px solid #6366F1" : "1px solid #333", background: showLibrary ? "#6366F1" : "transparent", color: "#fff", cursor: "pointer", fontSize: 13, whiteSpace: "nowrap" }}
+                style={{ padding: "9px 14px", minHeight: 36, borderRadius: 8, border: showLibrary ? "2px solid #6366F1" : "1px solid #D8D0C0", background: showLibrary ? "#E5683C" : "transparent", color: showLibrary ? "#fff" : "#2E2A24", cursor: "pointer", fontSize: 13, whiteSpace: "nowrap" }}
                 className="tb-btn"
                 title="Open carousel library"
               >
@@ -2144,13 +2157,13 @@ export default function CarouselPage() {
             </div>
           )}
           {showLibrary && (
-            <div style={{ marginLeft: 100, display: "flex", flexDirection: "column", gap: 6, maxWidth: 720, background: "#111", border: "1px solid #333", borderRadius: 10, padding: 12 }}>
-              {library.length === 0 && <span style={{ fontSize: 12, color: "#777" }}>Library empty. Click Save to store the current carousel.</span>}
+            <div style={{ marginLeft: 100, display: "flex", flexDirection: "column", gap: 6, maxWidth: 720, background: "#FFFFFF", border: "1px solid #D8D0C0", borderRadius: 10, padding: 12 }}>
+              {library.length === 0 && <span style={{ fontSize: 12, color: "#8A8378" }}>Library empty. Click Save to store the current carousel.</span>}
               {library.map((entry) => (
                 <div key={entry.name} style={{ display: "flex", alignItems: "center", gap: 10 }}>
                   <button
                     onClick={() => loadFromLibrary(entry)}
-                    style={{ flex: 1, textAlign: "left", padding: "8px 12px", borderRadius: 6, border: "1px solid #333", background: "#1a1a1a", color: "#fff", cursor: "pointer", fontSize: 13 }}
+                    style={{ flex: 1, textAlign: "left", padding: "8px 12px", borderRadius: 6, border: "1px solid #D8D0C0", background: "#FBF8F2", color: "#1A1714", cursor: "pointer", fontSize: 13 }}
                     title="Load this carousel"
                   >
                     {entry.name}
@@ -2169,18 +2182,20 @@ export default function CarouselPage() {
               ))}
             </div>
           )}
+          </>)}
 
+          {activeTab === "layout" && (<>
           {/* Safe Zone Toggle */}
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <span style={{ fontSize: 11, color: "#666", width: 90, flexShrink: 0 }}>Safe Zones</span>
+            <span style={{ fontSize: 11, color: "#8A8378", width: 90, flexShrink: 0 }}>Safe Zones</span>
             <button
               onClick={() => setShowSafeZones((v) => !v)}
               style={{
                 padding: "9px 14px",
                 minHeight: 36,
                 borderRadius: 8,
-                border: showSafeZones ? "2px solid #6366F1" : "1px solid #333",
-                background: showSafeZones ? "#6366F1" : "transparent",
+                border: showSafeZones ? "2px solid #6366F1" : "1px solid #D8D0C0",
+                background: showSafeZones ? "#E5683C" : "transparent",
                 color: "#fff",
                 cursor: "pointer",
                 fontSize: 12,
@@ -2191,10 +2206,12 @@ export default function CarouselPage() {
               {showSafeZones ? "Hide" : "Show"} TikTok / IG / YT zones
             </button>
           </div>
+          </>)}
 
+          {activeTab === "layout" && (<>
           {/* Font Size Slider */}
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <span style={{ fontSize: 11, color: "#666", width: 90, flexShrink: 0 }}>Font Size</span>
+            <span style={{ fontSize: 11, color: "#8A8378", width: 90, flexShrink: 0 }}>Font Size</span>
             <div style={{ display: "flex", alignItems: "center", gap: 12, flex: 1, maxWidth: 500 }}>
               <input
                 type="range"
@@ -2203,9 +2220,9 @@ export default function CarouselPage() {
                 step={0.05}
                 value={fontScale}
                 onChange={(e) => setFontScale(parseFloat(e.target.value))}
-                style={{ flex: 1, cursor: "pointer", accentColor: "#6366F1" }}
+                style={{ flex: 1, cursor: "pointer", accentColor: "#E5683C" }}
               />
-              <span style={{ fontSize: 12, color: "#fff", minWidth: 56, fontVariantNumeric: "tabular-nums" }}>
+              <span style={{ fontSize: 12, color: "#1A1714", minWidth: 56, fontVariantNumeric: "tabular-nums" }}>
                 {fontScale.toFixed(2)}x
               </span>
               <button
@@ -2213,7 +2230,7 @@ export default function CarouselPage() {
                 style={{
                   padding: "6px 12px",
                   borderRadius: 6,
-                  border: "1px solid #333",
+                  border: "1px solid #D8D0C0",
                   background: "transparent",
                   color: "#888",
                   cursor: "pointer",
@@ -2225,22 +2242,26 @@ export default function CarouselPage() {
               </button>
             </div>
           </div>
+          </>)}
 
+          {activeTab === "style" && (<>
           {/* Surface (bg + text) */}
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <span style={{ fontSize: 11, color: "#666", width: 90, flexShrink: 0 }}>{t.rowSurface}</span>
+            <span style={{ fontSize: 11, color: "#8A8378", width: 90, flexShrink: 0 }}>{t.rowSurface}</span>
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
               {Object.values(SURFACES).map((s) => (
-                <button key={s.id} onClick={() => setSurfaceId(s.id)} style={{ padding: "9px 14px", minHeight: 36, borderRadius: 8, border: surfaceId === s.id ? "2px solid #6366F1" : "1px solid #333", background: surfaceId === s.id ? "#6366F1" : "transparent", color: "#fff", cursor: "pointer", fontSize: 12, fontWeight: 500 }} className="tb-btn">
+                <button key={s.id} onClick={() => setSurfaceId(s.id)} style={{ padding: "9px 14px", minHeight: 36, borderRadius: 8, border: surfaceId === s.id ? "2px solid #6366F1" : "1px solid #D8D0C0", background: surfaceId === s.id ? "#E5683C" : "transparent", color: surfaceId === s.id ? "#fff" : "#2E2A24", cursor: "pointer", fontSize: 12, fontWeight: 500 }} className="tb-btn">
                   {t.surfaces[s.id]}
                 </button>
               ))}
             </div>
           </div>
+          </>)}
 
+          {activeTab === "style" && (<>
           {/* Accent (pop color) */}
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <span style={{ fontSize: 11, color: "#666", width: 90, flexShrink: 0 }}>{t.rowAccent}</span>
+            <span style={{ fontSize: 11, color: "#8A8378", width: 90, flexShrink: 0 }}>{t.rowAccent}</span>
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
               {Object.values(ACCENTS).map((a) => (
                 <button
@@ -2251,9 +2272,9 @@ export default function CarouselPage() {
                     padding: "9px 14px",
                     minHeight: 36,
                     borderRadius: 8,
-                    border: accentId === a.id ? `2px solid ${a.color}` : "1px solid #333",
+                    border: accentId === a.id ? `2px solid ${a.color}` : "1px solid #D8D0C0",
                     background: accentId === a.id ? a.color : "transparent",
-                    color: accentId === a.id ? "#000" : "#fff",
+                    color: accentId === a.id ? "#000" : "#2E2A24",
                     cursor: "pointer",
                     fontSize: 12,
                     fontWeight: 600,
@@ -2265,18 +2286,21 @@ export default function CarouselPage() {
               ))}
             </div>
           </div>
+          </>)}
 
+          {activeTab === "style" && (<>
           {/* Background */}
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <span style={{ fontSize: 11, color: "#666", width: 90, flexShrink: 0 }}>{t.rowBg}</span>
+            <span style={{ fontSize: 11, color: "#8A8378", width: 90, flexShrink: 0 }}>{t.rowBg}</span>
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
               {(["none", "blobs", "grid", "lines", "paper", "noise", "bignumber", "glow"] as BgType[]).map((bg) => (
-                <button key={bg} onClick={() => setBgType(bg)} style={{ padding: "9px 12px", minHeight: 36, borderRadius: 8, border: bgType === bg ? "2px solid #22C55E" : "1px solid #333", background: bgType === bg ? "#22C55E" : "transparent", color: "#fff", cursor: "pointer", fontSize: 12, fontWeight: 500 }} className="tb-btn">
+                <button key={bg} onClick={() => setBgType(bg)} style={{ padding: "9px 12px", minHeight: 36, borderRadius: 8, border: bgType === bg ? "2px solid #22C55E" : "1px solid #D8D0C0", background: bgType === bg ? "#E5683C" : "transparent", color: bgType === bg ? "#fff" : "#2E2A24", cursor: "pointer", fontSize: 12, fontWeight: 500 }} className="tb-btn">
                   {t.bgs[bg]}
                 </button>
               ))}
             </div>
           </div>
+          </>)}
 
         </div>
       </div>
@@ -2313,9 +2337,10 @@ export default function CarouselPage() {
                 right: 8,
                 display: "flex",
                 gap: 4,
-                background: "rgba(0,0,0,0.75)",
+                background: "rgba(251,248,242,0.95)",
                 padding: 4,
-                borderRadius: 6,
+                borderRadius: 8,
+                boxShadow: "0 2px 8px rgba(26,23,20,0.12)",
                 zIndex: 5,
                 opacity: 0.85,
               }}
@@ -2323,37 +2348,37 @@ export default function CarouselPage() {
             >
               <button
                 onClick={(e) => { e.stopPropagation(); adjustSlideScale(i, -0.05); }}
-                style={{ width: 28, height: 28, borderRadius: 4, border: "1px solid #444", background: "#1a1a1a", color: "#fff", cursor: "pointer", fontSize: 14, fontWeight: 700 }}
+                style={{ width: 28, height: 28, borderRadius: 6, border: "1px solid #D8D0C0", background: "#FFFFFF", color: "#1A1714", cursor: "pointer", fontSize: 14, fontWeight: 700 }}
                 title="Smaller font for this slide"
               >−</button>
-              <div style={{ fontSize: 10, color: "#aaa", display: "flex", alignItems: "center", minWidth: 38, justifyContent: "center", fontVariantNumeric: "tabular-nums" }}>
+              <div style={{ fontSize: 10, color: "#8A8378", display: "flex", alignItems: "center", minWidth: 38, justifyContent: "center", fontVariantNumeric: "tabular-nums" }}>
                 {(slideScales[i] ?? 1.0).toFixed(2)}x
               </div>
               <button
                 onClick={(e) => { e.stopPropagation(); adjustSlideScale(i, 0.05); }}
-                style={{ width: 28, height: 28, borderRadius: 4, border: "1px solid #444", background: "#1a1a1a", color: "#fff", cursor: "pointer", fontSize: 14, fontWeight: 700 }}
+                style={{ width: 28, height: 28, borderRadius: 6, border: "1px solid #D8D0C0", background: "#FFFFFF", color: "#1A1714", cursor: "pointer", fontSize: 14, fontWeight: 700 }}
                 title="Bigger font for this slide"
               >+</button>
               {slideScales[i] !== undefined && (
                 <button
                   onClick={(e) => { e.stopPropagation(); resetSlideScale(i); }}
-                  style={{ height: 28, padding: "0 8px", borderRadius: 4, border: "1px solid #444", background: "#1a1a1a", color: "#888", cursor: "pointer", fontSize: 10 }}
+                  style={{ height: 28, padding: "0 8px", borderRadius: 6, border: "1px solid #D8D0C0", background: "#FFFFFF", color: "#8A8378", cursor: "pointer", fontSize: 10 }}
                   title="Reset this slide"
                 >↺</button>
               )}
-              <div style={{ width: 1, background: "#333", margin: "0 4px" }} />
+              <div style={{ width: 1, background: "#E2DACB", margin: "0 4px" }} />
               <button
                 onClick={(e) => { e.stopPropagation(); setEditingIndex(i); }}
-                style={{ width: 28, height: 28, borderRadius: 4, border: "1px solid #6366F1", background: "#6366F1", color: "#fff", cursor: "pointer", fontSize: 13 }}
+                style={{ width: 28, height: 28, borderRadius: 4, border: "1px solid #6366F1", background: "#E5683C", color: "#fff", cursor: "pointer", fontSize: 13 }}
                 title="Edit this slide's text"
               >✎</button>
               <button
                 onClick={(e) => { e.stopPropagation(); !exporting && exportSlide(i); }}
                 disabled={exporting}
-                style={{ width: 28, height: 28, borderRadius: 4, border: "1px solid #10b981", background: "#10b981", color: "#fff", cursor: exporting ? "not-allowed" : "pointer", fontSize: 14, fontWeight: 700 }}
+                style={{ width: 28, height: 28, borderRadius: 4, border: "1px solid #10b981", background: "#E5683C", color: "#fff", cursor: exporting ? "not-allowed" : "pointer", fontSize: 14, fontWeight: 700 }}
                 title="Export this slide as PNG"
               >⬇</button>
-              <div style={{ width: 1, background: "#333", margin: "0 4px" }} />
+              <div style={{ width: 1, background: "#E2DACB", margin: "0 4px" }} />
               {(["left", "center", "right"] as AlignT[]).map((a) => {
                 const isActive = (slideAligns[i] ?? "center") === a;
                 const icon = a === "left" ? "⬅" : a === "right" ? "➡" : "⬌";
@@ -2366,7 +2391,7 @@ export default function CarouselPage() {
                       height: 28,
                       borderRadius: 4,
                       border: isActive ? "1px solid #6366F1" : "1px solid #444",
-                      background: isActive ? "#6366F1" : "#1a1a1a",
+                      background: isActive ? "#E5683C" : "#1a1a1a",
                       color: "#fff",
                       cursor: "pointer",
                       fontSize: 12,
@@ -2381,7 +2406,7 @@ export default function CarouselPage() {
             <div
               style={{
                 fontSize: 12,
-                color: "#888",
+                color: "#8A8378",
                 marginTop: 8,
                 textAlign: "center",
                 fontVariantNumeric: "tabular-nums",
@@ -2436,55 +2461,55 @@ export default function CarouselPage() {
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            style={{ width: 520, maxWidth: "92vw", maxHeight: "85vh", overflowY: "auto", background: "#161616", border: "1px solid #333", borderRadius: 14, padding: 24, display: "flex", flexDirection: "column", gap: 14 }}
+            style={{ width: 520, maxWidth: "92vw", maxHeight: "85vh", overflowY: "auto", background: "#FBF8F2", border: "1px solid #E2DACB", borderRadius: 16, padding: 24, display: "flex", flexDirection: "column", gap: 14 }}
           >
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <h3 style={{ margin: 0, fontSize: 15, color: "#fff" }}>
+              <h3 style={{ margin: 0, fontSize: 15, color: "#1A1714" }}>
                 Edit slide {editingIndex + 1}/{slides.length} — {slides[editingIndex].type}
               </h3>
-              <button onClick={() => setEditingIndex(null)} style={{ border: "none", background: "transparent", color: "#888", fontSize: 18, cursor: "pointer" }}>✕</button>
+              <button onClick={() => setEditingIndex(null)} style={{ border: "none", background: "transparent", color: "#8A8378", fontSize: 18, cursor: "pointer" }}>✕</button>
             </div>
 
             {slides[editingIndex].type === "body" && (
-              <label style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 12, color: "#999" }}>
+              <label style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 12, color: "#8A8378" }}>
                 Title
                 <input
                   type="text"
                   value={slides[editingIndex].title ?? ""}
                   onChange={(e) => setSlides((prev) => prev.map((s, idx) => idx === editingIndex ? { ...s, title: e.target.value } : s))}
-                  style={{ padding: "10px 12px", borderRadius: 8, border: "1px solid #333", background: "#1d1d1d", color: "#fff", fontSize: 14 }}
+                  style={{ padding: "10px 12px", borderRadius: 8, border: "1px solid #D8D0C0", background: "#FFFFFF", color: "#1A1714", fontSize: 14 }}
                 />
               </label>
             )}
 
-            <label style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 12, color: "#999" }}>
+            <label style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 12, color: "#8A8378" }}>
               Text (one line per row)
               <textarea
                 value={slides[editingIndex].text ?? ""}
                 onChange={(e) => setSlides((prev) => prev.map((s, idx) => idx === editingIndex ? { ...s, text: e.target.value } : s))}
                 rows={7}
-                style={{ padding: "10px 12px", borderRadius: 8, border: "1px solid #333", background: "#1d1d1d", color: "#fff", fontSize: 14, fontFamily: "inherit", resize: "vertical", lineHeight: 1.5 }}
+                style={{ padding: "10px 12px", borderRadius: 8, border: "1px solid #D8D0C0", background: "#FFFFFF", color: "#1A1714", fontSize: 14, fontFamily: "inherit", resize: "vertical", lineHeight: 1.5 }}
               />
             </label>
 
-            <label style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 12, color: "#999" }}>
+            <label style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 12, color: "#8A8378" }}>
               Highlight (must appear in the text above)
               <input
                 type="text"
                 value={slides[editingIndex].highlight ?? ""}
                 onChange={(e) => setSlides((prev) => prev.map((s, idx) => idx === editingIndex ? { ...s, highlight: e.target.value || undefined } : s))}
-                style={{ padding: "10px 12px", borderRadius: 8, border: "1px solid #333", background: "#1d1d1d", color: "#fff", fontSize: 14 }}
+                style={{ padding: "10px 12px", borderRadius: 8, border: "1px solid #D8D0C0", background: "#FFFFFF", color: "#1A1714", fontSize: 14 }}
               />
             </label>
 
             {slides[editingIndex].type === "cta" && (
-              <label style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 12, color: "#999" }}>
+              <label style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 12, color: "#8A8378" }}>
                 Handle
                 <input
                   type="text"
                   value={slides[editingIndex].handle ?? ""}
                   onChange={(e) => setSlides((prev) => prev.map((s, idx) => idx === editingIndex ? { ...s, handle: e.target.value } : s))}
-                  style={{ padding: "10px 12px", borderRadius: 8, border: "1px solid #333", background: "#1d1d1d", color: "#fff", fontSize: 14 }}
+                  style={{ padding: "10px 12px", borderRadius: 8, border: "1px solid #D8D0C0", background: "#FFFFFF", color: "#1A1714", fontSize: 14 }}
                 />
               </label>
             )}
@@ -2494,17 +2519,17 @@ export default function CarouselPage() {
                 <button
                   onClick={() => { if (editingIndex > 0) setEditingIndex(editingIndex - 1); }}
                   disabled={editingIndex === 0}
-                  style={{ padding: "8px 14px", borderRadius: 8, border: "1px solid #333", background: "transparent", color: editingIndex === 0 ? "#555" : "#fff", cursor: editingIndex === 0 ? "default" : "pointer", fontSize: 13 }}
+                  style={{ padding: "8px 14px", borderRadius: 8, border: "1px solid #D8D0C0", background: "transparent", color: editingIndex === 0 ? "#C4BCAE" : "#2E2A24", cursor: editingIndex === 0 ? "default" : "pointer", fontSize: 13 }}
                 >← Prev</button>
                 <button
                   onClick={() => { if (editingIndex < slides.length - 1) setEditingIndex(editingIndex + 1); }}
                   disabled={editingIndex === slides.length - 1}
-                  style={{ padding: "8px 14px", borderRadius: 8, border: "1px solid #333", background: "transparent", color: editingIndex === slides.length - 1 ? "#555" : "#fff", cursor: editingIndex === slides.length - 1 ? "default" : "pointer", fontSize: 13 }}
+                  style={{ padding: "8px 14px", borderRadius: 8, border: "1px solid #D8D0C0", background: "transparent", color: editingIndex === slides.length - 1 ? "#C4BCAE" : "#2E2A24", cursor: editingIndex === slides.length - 1 ? "default" : "pointer", fontSize: 13 }}
                 >Next →</button>
               </div>
               <button
                 onClick={() => setEditingIndex(null)}
-                style={{ padding: "8px 20px", borderRadius: 8, border: "none", background: "#22C55E", color: "#fff", cursor: "pointer", fontSize: 13, fontWeight: 600 }}
+                style={{ padding: "8px 20px", borderRadius: 8, border: "none", background: "#E5683C", color: "#fff", cursor: "pointer", fontSize: 13, fontWeight: 600 }}
               >Done</button>
             </div>
           </div>

@@ -1,10 +1,10 @@
-# Quad Star Carousels
+# Quad Studio
 
-> TikTok / Instagram Reels / YouTube Shorts photo carousel generator with platform-safe layout, per-slide font + alignment controls, AI-powered content generation, and one-command export bundling.
+> A short-form carousel studio for TikTok / Instagram Reels / YouTube Shorts. Platform-safe layout, tabbed in-browser editor, per-slide typography + alignment, AI content generation, carousel library, and one-click ZIP export.
 
 Built for [@quad_star](https://www.tiktok.com/@quad_star) — AI tools and prompts channel.
 
-![Format](https://img.shields.io/badge/format-9:16%20vertical-blueviolet)
+![Format](https://img.shields.io/badge/format-9:16%20vertical-E5683C)
 ![Stack](https://img.shields.io/badge/stack-Next.js%2015%20%2B%20Bun-black)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
@@ -12,17 +12,25 @@ Built for [@quad_star](https://www.tiktok.com/@quad_star) — AI tools and promp
 
 ## What This Is
 
-A fork of [itchernetski/threads-carousel-claude-skill](https://github.com/itchernetski/threads-carousel-claude-skill) extended with:
+**Quad Studio** is a self-hosted carousel editor. It started as a fork of [itchernetski/threads-carousel-claude-skill](https://github.com/itchernetski/threads-carousel-claude-skill) (MIT) and has been substantially extended into its own tool:
 
+**In-browser editing (no code required)**
+- **Tabbed editor** — Content / Style / Layout tabs instead of a wall of controls
+- **Click-to-edit** — ✎ on any slide opens an edit panel (text / title / highlight / handle) with prev/next nav
+- **Carousel library** — save / load / delete named carousels, with autosave to localStorage
+- **AI Generate** — type a topic, get 7 slides; supports OpenRouter (Grok default) or Anthropic, key stays server-side
+
+**Layout + platform safety**
 - **Platform-safe defaults** — content stays clear of TikTok/IG/YT UI overlays
-- **Visual safe-zone overlay** — toggle a debug layer showing where platform UI will cover content
-- **Per-slide font scale + alignment** — granular control via hover overlay on each slide
+- **Visual safe-zone overlay** — toggle a debug layer showing where platform UI covers content (never bakes into exports)
+- **Per-slide font scale + alignment** — granular control via overlay on each slide
 - **Global font size slider** — scale all slides together (0.5x ↔ 2.0x)
-- **AI generator CLI** — `bun run new "topic"` writes 7 slides via Claude API
-- **One-command bundling** — `bun run pack <name>` collects exported PNGs into a folder + zip + reveals in Finder
-- **CTA reveal styling** — last slide gets a distinct visual treatment (glow + bordered handle + eyebrow)
+
+**Export + brand**
+- **One-click ZIP** — Export ZIP bundles all slides into a single date-stamped download
+- **CTA reveal styling** — last slide gets a distinct visual treatment (glow + bordered handle)
 - **Brand config** — single source of truth in `src/brand.ts`, footer renders on every slide
-- **Image upload helper** — `bun run img <path>` copies a file into `public/images/` ready to reference
+- **CLI tools** — `bun run new "topic"`, `bun run img <path>`, `bun run pack <name>` for terminal-driven workflows
 
 ---
 
@@ -247,10 +255,12 @@ quad-star-carousels/
 
 ---
 
-## Credits
+## Credits & Attribution
 
-- **Engine fork:** [itchernetski/threads-carousel-claude-skill](https://github.com/itchernetski/threads-carousel-claude-skill) (MIT)
-- **AI gen UX inspiration:** [FranciscoMoretti/carousel-generator](https://github.com/FranciscoMoretti/carousel-generator)
+Quad Studio is built on the shoulders of open source. With gratitude:
+
+- **Original rendering engine:** [itchernetski/threads-carousel-claude-skill](https://github.com/itchernetski/threads-carousel-claude-skill) by itchernetski (MIT License). The slide-rendering core, preset system, and html-to-image export pipeline originate from this project. Quad Studio extends it with the tabbed editor, click-to-edit panel, carousel library, AI generation API route, safe-zone overlay, per-slide controls, and the Quad Studio visual identity.
+- **AI generate UX inspiration:** [FranciscoMoretti/carousel-generator](https://github.com/FranciscoMoretti/carousel-generator)
 - **Design rules applied:** [pbakaus/impeccable](https://github.com/pbakaus/impeccable)
 - **Illustration style reference:** [helloianneo/ian-xiaohei-illustrations](https://github.com/helloianneo/ian-xiaohei-illustrations)
 
@@ -258,7 +268,7 @@ quad-star-carousels/
 
 ## License
 
-MIT. Original engine MIT. Fork your own branch and ship.
+MIT. The original engine is MIT-licensed and that license is preserved in [`LICENSE`](./LICENSE). Quad Studio's additions are also released under MIT. Fork it, ship it.
 
 ---
 

@@ -43,7 +43,7 @@ const caveat = Caveat({
 });
 
 export const metadata: Metadata = {
-  title: "Threads Carousel Generator",
+  title: "Quad Studio — Carousel Maker",
 };
 
 export default function RootLayout({
@@ -53,7 +53,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={`${inter.variable} ${playfair.variable} ${unbounded.variable} ${spaceGrotesk.variable} ${jetbrainsMono.variable} ${oswald.variable} ${caveat.variable} font-sans antialiased bg-neutral-900 text-white`}>
+      <body className={`${inter.variable} ${playfair.variable} ${unbounded.variable} ${spaceGrotesk.variable} ${jetbrainsMono.variable} ${oswald.variable} ${caveat.variable} font-sans antialiased`} style={{ background: "#F4EFE6", color: "#1A1714" }}>
         {children}
       </body>
     </html>
