@@ -18,6 +18,7 @@ Built for [@quad_star](https://www.tiktok.com/@quad_star) — AI tools and promp
 - **Project sidebar** — every carousel is a named project: create, switch, duplicate, rename, delete, mark as posted. Autosaved to localStorage.
 - **Tabbed editor** — Content / Style / Layout tabs instead of a wall of controls
 - **Click-to-edit** — ✎ on any slide opens an edit panel (text / title / highlight / handle) with prev/next nav
+- **Slide management** — add, delete, duplicate, and reorder slides directly in the editor (no fixed 7-slide limit)
 - **AI Generate** — type a topic, get 7 slides; supports OpenRouter (Grok default) or Anthropic, key stays server-side
 
 **Layout + platform safety**

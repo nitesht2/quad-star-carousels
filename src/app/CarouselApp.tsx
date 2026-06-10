@@ -1983,6 +1983,45 @@ export default function CarouselPage() {
       return next;
     });
   }, []);
+
+  // ---- Slide management: add / delete / duplicate / reorder ----
+  // Per-slide scale/align maps are index-keyed, so clear them when slide order changes.
+  const clearOverrides = useCallback(() => {
+    setSlideScales({});
+    setSlideAligns({});
+  }, []);
+  const addSlideAfter = useCallback((i: number) => {
+    setSlides((prev) => {
+      const blank: SlideData = { type: "body", title: "NEW SLIDE", text: "Tap the edit button\nto write this slide." };
+      const next = [...prev];
+      next.splice(i + 1, 0, blank);
+      return next;
+    });
+    clearOverrides();
+  }, [clearOverrides]);
+  const deleteSlide = useCallback((i: number) => {
+    setSlides((prev) => (prev.length <= 1 ? prev : prev.filter((_, idx) => idx !== i)));
+    clearOverrides();
+  }, [clearOverrides]);
+  const duplicateSlide = useCallback((i: number) => {
+    setSlides((prev) => {
+      const next = [...prev];
+      next.splice(i + 1, 0, { ...prev[i] });
+      return next;
+    });
+    clearOverrides();
+  }, [clearOverrides]);
+  const moveSlide = useCallback((i: number, dir: -1 | 1) => {
+    setSlides((prev) => {
+      const j = i + dir;
+      if (j < 0 || j >= prev.length) return prev;
+      const next = [...prev];
+      [next[i], next[j]] = [next[j], next[i]];
+      return next;
+    });
+    clearOverrides();
+  }, [clearOverrides]);
+
   const [exporting, setExporting] = useState(false);
   const [exportStatus, setExportStatus] = useState("");
   const langRef = useRef<Lang>("en");
@@ -2540,13 +2579,13 @@ export default function CarouselPage() {
               <div style={{ width: 1, background: "#E2DACB", margin: "0 4px" }} />
               <button
                 onClick={(e) => { e.stopPropagation(); setEditingIndex(i); }}
-                style={{ width: 28, height: 28, borderRadius: 4, border: "1px solid #6366F1", background: "#E5683C", color: "#fff", cursor: "pointer", fontSize: 13 }}
+                style={{ width: 28, height: 28, borderRadius: 6, border: "1px solid #E5683C", background: "#E5683C", color: "#fff", cursor: "pointer", fontSize: 13 }}
                 title="Edit this slide's text"
               >✎</button>
               <button
                 onClick={(e) => { e.stopPropagation(); !exporting && exportSlide(i); }}
                 disabled={exporting}
-                style={{ width: 28, height: 28, borderRadius: 4, border: "1px solid #10b981", background: "#E5683C", color: "#fff", cursor: exporting ? "not-allowed" : "pointer", fontSize: 14, fontWeight: 700 }}
+                style={{ width: 28, height: 28, borderRadius: 6, border: "1px solid #E5683C", background: "#E5683C", color: "#fff", cursor: exporting ? "not-allowed" : "pointer", fontSize: 14, fontWeight: 700 }}
                 title="Export this slide as PNG"
               >⬇</button>
               <div style={{ width: 1, background: "#E2DACB", margin: "0 4px" }} />
@@ -2560,10 +2599,10 @@ export default function CarouselPage() {
                     style={{
                       width: 28,
                       height: 28,
-                      borderRadius: 4,
-                      border: isActive ? "1px solid #6366F1" : "1px solid #444",
-                      background: isActive ? "#E5683C" : "#1a1a1a",
-                      color: "#fff",
+                      borderRadius: 6,
+                      border: isActive ? "1px solid #E5683C" : "1px solid #D8D0C0",
+                      background: isActive ? "#E5683C" : "#FFFFFF",
+                      color: isActive ? "#fff" : "#2E2A24",
                       cursor: "pointer",
                       fontSize: 12,
                     }}
@@ -2573,6 +2612,51 @@ export default function CarouselPage() {
                   </button>
                 );
               })}
+            </div>
+
+            {/* Structural ops strip (bottom-left of each slide) */}
+            <div
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                position: "absolute",
+                bottom: 8,
+                left: 8,
+                display: "flex",
+                gap: 4,
+                background: "rgba(251,248,242,0.95)",
+                padding: 4,
+                borderRadius: 8,
+                boxShadow: "0 2px 8px rgba(26,23,20,0.12)",
+                zIndex: 5,
+              }}
+            >
+              {[
+                { icon: "←", title: "Move left", fn: () => moveSlide(i, -1), disabled: i === 0 },
+                { icon: "→", title: "Move right", fn: () => moveSlide(i, 1), disabled: i === slides.length - 1 },
+                { icon: "⧉", title: "Duplicate slide", fn: () => duplicateSlide(i), disabled: false },
+                { icon: "+", title: "Add slide after", fn: () => addSlideAfter(i), disabled: false },
+                { icon: "🗑", title: "Delete slide", fn: () => deleteSlide(i), disabled: slides.length <= 1, danger: true },
+              ].map((op) => (
+                <button
+                  key={op.title}
+                  title={op.title}
+                  disabled={op.disabled}
+                  onClick={(e) => { e.stopPropagation(); op.fn(); }}
+                  style={{
+                    width: 28,
+                    height: 28,
+                    borderRadius: 6,
+                    border: `1px solid ${op.danger ? "#E7C3BA" : "#D8D0C0"}`,
+                    background: "#FFFFFF",
+                    color: op.disabled ? "#C4BCAE" : op.danger ? "#C2402A" : "#2E2A24",
+                    cursor: op.disabled ? "default" : "pointer",
+                    fontSize: 13,
+                    padding: 0,
+                  }}
+                >
+                  {op.icon}
+                </button>
+              ))}
             </div>
             <div
               style={{
