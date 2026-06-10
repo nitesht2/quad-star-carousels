@@ -2241,8 +2241,8 @@ export default function CarouselPage() {
             </div>
           </div>
           <div style={{ marginLeft: "auto", display: "flex", gap: 8, alignItems: "center" }}>
-            <button onClick={exportPdf} disabled={exporting} style={{ padding: "8px 16px", minHeight: 36, borderRadius: 8, border: "1px solid #D8D0C0", background: "transparent", color: exporting ? "#8A8378" : "#2E2A24", cursor: exporting ? "not-allowed" : "pointer", fontSize: 13, fontWeight: 600 }} className="tb-btn">
-              PDF
+            <button onClick={exportPdf} disabled={exporting} title="Download all slides as a single PDF" style={{ padding: "8px 16px", minHeight: 36, borderRadius: 8, border: "1px solid #D8D0C0", background: "transparent", color: exporting ? "#8A8378" : "#2E2A24", cursor: exporting ? "not-allowed" : "pointer", fontSize: 13, fontWeight: 600 }} className="tb-btn">
+              ⬇ PDF
             </button>
             <button onClick={exportAllFormats} disabled={exporting} title="Export TikTok 9:16 + Instagram 4:5 + Square 1:1 in one zip" style={{ padding: "8px 16px", minHeight: 36, borderRadius: 8, border: "1px solid #E5683C", background: "transparent", color: exporting ? "#8A8378" : "#E5683C", cursor: exporting ? "not-allowed" : "pointer", fontSize: 13, fontWeight: 700 }} className="tb-btn">
               All Formats
