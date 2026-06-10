@@ -798,50 +798,15 @@ function SlideBody({
       <SlideBackground bgType={bgType} slideIndex={index} preset={preset} />
       <SafeZoneOverlay />
       {isCta && (
-        <>
-          {/* Radial glow */}
-          <div
-            style={{
-              position: "absolute",
-              inset: 0,
-              background: `radial-gradient(circle at center, ${preset.accentColor}26 0%, transparent 60%)`,
-              pointerEvents: "none",
-              zIndex: 0,
-            }}
-          />
-          {/* Decorative top "TAP TO FOLLOW" eyebrow */}
-          <div
-            style={{
-              position: "absolute",
-              top: 220,
-              left: 0,
-              right: 0,
-              textAlign: "center",
-              fontSize: 32,
-              fontWeight: 700,
-              color: preset.accentColor,
-              letterSpacing: "0.4em",
-              opacity: 0.7,
-              zIndex: 1,
-            }}
-          >
-            TAP TO FOLLOW
-          </div>
-          {/* Accent dot */}
-          <div
-            style={{
-              position: "absolute",
-              top: 290,
-              left: "50%",
-              transform: "translateX(-50%)",
-              width: 12,
-              height: 12,
-              borderRadius: "50%",
-              background: preset.accentColor,
-              zIndex: 1,
-            }}
-          />
-        </>
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            background: `radial-gradient(circle at center, ${preset.accentColor}26 0%, transparent 60%)`,
+            pointerEvents: "none",
+            zIndex: 0,
+          }}
+        />
       )}
       {data.badge && <Badge text={data.badge} preset={preset} />}
       {data.title && (
@@ -879,8 +844,8 @@ function SlideBody({
       ) : (
         <div
           style={{
-            fontSize: Math.round(getAdaptiveFontSize(data.text || "", "body") * scale),
-            fontWeight: preset.bodyFontWeight ?? 600,
+            fontSize: Math.round(getAdaptiveFontSize(data.text || "", "body") * scale * (isCta ? 1.25 : 1.0)),
+            fontWeight: isCta ? 800 : (preset.bodyFontWeight ?? 600),
             color: preset.bodyColor ?? preset.textColor,
             lineHeight: preset.bodyLineHeight ?? 1.2,
             whiteSpace: "pre-line",
@@ -896,16 +861,16 @@ function SlideBody({
         <div
           style={{
             fontFamily: preset.fontFamily,
-            fontSize: isCta ? 110 : 72,
-            fontWeight: 900,
+            fontSize: isCta ? 64 : 72,
+            fontWeight: 800,
             color: preset.accentColor,
-            marginTop: isCta ? 80 : 56,
-            letterSpacing: "-0.03em",
+            marginTop: isCta ? 60 : 56,
+            letterSpacing: "-0.02em",
             position: "relative",
-            padding: isCta ? "20px 48px" : 0,
-            border: isCta ? `4px solid ${preset.accentColor}` : "none",
-            borderRadius: isCta ? 24 : 0,
-            background: isCta ? `${preset.accentColor}1A` : "transparent",
+            padding: isCta ? "12px 32px" : 0,
+            border: isCta ? `3px solid ${preset.accentColor}` : "none",
+            borderRadius: isCta ? 18 : 0,
+            background: isCta ? `${preset.accentColor}15` : "transparent",
           }}
         >
           {data.handle}
@@ -1811,9 +1776,88 @@ const T = {
 // MAIN PAGE
 // ============================================================
 
+const LIB_KEY = "qsc-library";
+const CURRENT_KEY = "qsc-current";
+
+type LibraryEntry = { name: string; savedAt: number; slides: SlideData[] };
+
 export default function CarouselPage() {
   const [lang, setLang] = useState<Lang>("en");
   const t = T[lang];
+  // Slides are stateful: editable in-browser, AI-generated, autosaved to localStorage
+  const [slides, setSlides] = useState<SlideData[]>(SLIDES);
+  const [hydrated, setHydrated] = useState(false);
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(CURRENT_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) setSlides(parsed);
+      }
+    } catch {}
+    setHydrated(true);
+  }, []);
+  useEffect(() => {
+    if (!hydrated) return;
+    try { localStorage.setItem(CURRENT_KEY, JSON.stringify(slides)); } catch {}
+  }, [slides, hydrated]);
+
+  // Edit panel
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
+
+  // Library
+  const [library, setLibrary] = useState<LibraryEntry[]>([]);
+  const [showLibrary, setShowLibrary] = useState(false);
+  useEffect(() => {
+    try {
+      const lib = localStorage.getItem(LIB_KEY);
+      if (lib) setLibrary(JSON.parse(lib));
+    } catch {}
+  }, []);
+  const persistLibrary = useCallback((entries: LibraryEntry[]) => {
+    setLibrary(entries);
+    try { localStorage.setItem(LIB_KEY, JSON.stringify(entries)); } catch {}
+  }, []);
+  const saveToLibrary = useCallback(() => {
+    const name = window.prompt("Save carousel as:", "");
+    if (!name?.trim()) return;
+    const entry: LibraryEntry = { name: name.trim(), savedAt: Date.now(), slides };
+    persistLibrary([entry, ...library.filter((e) => e.name !== entry.name)]);
+  }, [slides, library, persistLibrary]);
+  const loadFromLibrary = useCallback((entry: LibraryEntry) => {
+    setSlides(entry.slides);
+    setShowLibrary(false);
+  }, []);
+  const deleteFromLibrary = useCallback((name: string) => {
+    persistLibrary(library.filter((e) => e.name !== name));
+  }, [library, persistLibrary]);
+
+  // AI generation
+  const [genTopic, setGenTopic] = useState("");
+  const [generating, setGenerating] = useState(false);
+  const [genError, setGenError] = useState("");
+  const generateWithAI = useCallback(async () => {
+    const topic = genTopic.trim();
+    if (!topic || generating) return;
+    setGenerating(true);
+    setGenError("");
+    try {
+      const res = await fetch("/api/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ topic }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+      setSlides(data.slides);
+      setGenTopic("");
+    } catch (e) {
+      setGenError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setGenerating(false);
+    }
+  }, [genTopic, generating]);
+
   const [fontId, setFontId] = useState<FontId>(DEFAULT_FONT);
   const [surfaceId, setSurfaceId] = useState<SurfaceId>(DEFAULT_SURFACE);
   const [accentId, setAccentId] = useState<AccentId>(DEFAULT_ACCENT);
@@ -1899,25 +1943,40 @@ export default function CarouselPage() {
       const dataUrl = await captureSlide(index);
       if (!dataUrl) return;
       const link = document.createElement("a");
-      link.download = `${String(index + 1).padStart(2, "0")}-${SLIDES[index].type}.png`;
+      link.download = `${String(index + 1).padStart(2, "0")}-${slides[index].type}.png`;
       link.href = dataUrl;
       link.click();
     },
-    [captureSlide]
+    [captureSlide, slides]
   );
 
   const exportAll = useCallback(async () => {
     setExporting(true);
     const tl = T[langRef.current];
-    for (let i = 0; i < SLIDES.length; i++) {
-      setExportStatus(tl.statusExport(i + 1, SLIDES.length));
-      await exportSlide(i);
-      await new Promise((r) => setTimeout(r, 300));
+    const { default: JSZip } = await import("jszip");
+    const zip = new JSZip();
+    for (let i = 0; i < slides.length; i++) {
+      setExportStatus(tl.statusExport(i + 1, slides.length));
+      const dataUrl = await captureSlide(i);
+      if (!dataUrl) continue;
+      const base64 = dataUrl.split(",")[1];
+      const filename = `${String(i + 1).padStart(2, "0")}-${slides[i].type}.png`;
+      zip.file(filename, base64, { base64: true });
+      await new Promise((r) => setTimeout(r, 120));
     }
+    setExportStatus("Zipping...");
+    const blob = await zip.generateAsync({ type: "blob" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    const stamp = `${new Date().getFullYear()}${String(new Date().getMonth()+1).padStart(2,"0")}${String(new Date().getDate()).padStart(2,"0")}`;
+    link.download = `carousel-${stamp}.zip`;
+    link.href = url;
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
     setExportStatus(tl.statusDone);
     setExporting(false);
     setTimeout(() => setExportStatus(""), 2000);
-  }, [exportSlide]);
+  }, [captureSlide, slides]);
 
   const exportPdf = useCallback(async () => {
     setExporting(true);
@@ -1928,8 +1987,8 @@ export default function CarouselPage() {
     const jpegOpts = { width: canvasW, height: canvasH, pixelRatio: 2, cacheBust: true, backgroundColor: preset.bg, quality: 0.92 };
 
     const tl = T[langRef.current];
-    for (let i = 0; i < SLIDES.length; i++) {
-      setExportStatus(tl.statusPdf(i + 1, SLIDES.length));
+    for (let i = 0; i < slides.length; i++) {
+      setExportStatus(tl.statusPdf(i + 1, slides.length));
       const el = offscreenRefs.current[i];
       if (!el) continue;
 
@@ -1951,7 +2010,7 @@ export default function CarouselPage() {
     setExportStatus(T[langRef.current].statusDone);
     setExporting(false);
     setTimeout(() => setExportStatus(""), 2000);
-  }, [preset.bg, canvasW, canvasH]);
+  }, [preset.bg, canvasW, canvasH, slides]);
 
   return (
     <CanvasSizeContext.Provider value={{ w: canvasW, h: canvasH }}>
@@ -2039,6 +2098,77 @@ export default function CarouselPage() {
               ))}
             </div>
           </div>
+
+          {/* AI Generate + Library */}
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <span style={{ fontSize: 11, color: "#666", width: 90, flexShrink: 0 }}>AI Generate</span>
+            <div style={{ display: "flex", gap: 8, flex: 1, maxWidth: 720, alignItems: "center" }}>
+              <input
+                type="text"
+                value={genTopic}
+                onChange={(e) => setGenTopic(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") generateWithAI(); }}
+                placeholder='Topic, e.g. "5 ChatGPT prompts for job hunting"'
+                disabled={generating}
+                style={{ flex: 1, padding: "9px 14px", minHeight: 36, borderRadius: 8, border: "1px solid #333", background: "#1a1a1a", color: "#fff", fontSize: 13, outline: "none" }}
+              />
+              <button
+                onClick={generateWithAI}
+                disabled={generating || !genTopic.trim()}
+                style={{ padding: "9px 18px", minHeight: 36, borderRadius: 8, border: "none", background: generating ? "#444" : "#A855F7", color: "#fff", cursor: generating ? "wait" : "pointer", fontSize: 13, fontWeight: 600, whiteSpace: "nowrap" }}
+                className="tb-btn"
+              >
+                {generating ? "Writing..." : "✦ Generate"}
+              </button>
+              <button
+                onClick={saveToLibrary}
+                style={{ padding: "9px 14px", minHeight: 36, borderRadius: 8, border: "1px solid #333", background: "transparent", color: "#fff", cursor: "pointer", fontSize: 13, whiteSpace: "nowrap" }}
+                className="tb-btn"
+                title="Save current carousel to library"
+              >
+                Save
+              </button>
+              <button
+                onClick={() => setShowLibrary((v) => !v)}
+                style={{ padding: "9px 14px", minHeight: 36, borderRadius: 8, border: showLibrary ? "2px solid #6366F1" : "1px solid #333", background: showLibrary ? "#6366F1" : "transparent", color: "#fff", cursor: "pointer", fontSize: 13, whiteSpace: "nowrap" }}
+                className="tb-btn"
+                title="Open carousel library"
+              >
+                Library ({library.length})
+              </button>
+            </div>
+          </div>
+          {genError && (
+            <div style={{ marginLeft: 100, fontSize: 12, color: "#f87171" }}>
+              {genError}
+            </div>
+          )}
+          {showLibrary && (
+            <div style={{ marginLeft: 100, display: "flex", flexDirection: "column", gap: 6, maxWidth: 720, background: "#111", border: "1px solid #333", borderRadius: 10, padding: 12 }}>
+              {library.length === 0 && <span style={{ fontSize: 12, color: "#777" }}>Library empty. Click Save to store the current carousel.</span>}
+              {library.map((entry) => (
+                <div key={entry.name} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <button
+                    onClick={() => loadFromLibrary(entry)}
+                    style={{ flex: 1, textAlign: "left", padding: "8px 12px", borderRadius: 6, border: "1px solid #333", background: "#1a1a1a", color: "#fff", cursor: "pointer", fontSize: 13 }}
+                    title="Load this carousel"
+                  >
+                    {entry.name}
+                    <span style={{ color: "#666", marginLeft: 10, fontSize: 11 }}>
+                      {new Date(entry.savedAt).toLocaleDateString()} · {entry.slides.length} slides
+                    </span>
+                  </button>
+                  <button
+                    onClick={() => deleteFromLibrary(entry.name)}
+                    style={{ padding: "8px 10px", borderRadius: 6, border: "1px solid #442222", background: "transparent", color: "#f87171", cursor: "pointer", fontSize: 12 }}
+                    title="Delete from library"
+                  >
+                    ✕
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
 
           {/* Safe Zone Toggle */}
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -2159,7 +2289,7 @@ export default function CarouselPage() {
           gap: 20,
         }}
       >
-        {SLIDES.map((slide, i) => (
+        {slides.map((slide, i) => (
           <div key={i} style={{ position: "relative" }}>
             <div className="slide-card">
               <FontScaleContext.Provider value={fontScale * (slideScales[i] ?? 1.0)}>
@@ -2169,7 +2299,7 @@ export default function CarouselPage() {
                       data={slide}
                       preset={preset}
                       index={i}
-                      total={SLIDES.length}
+                      total={slides.length}
                       bgType={bgType}
                     />
                   </SafeZoneContext.Provider>
@@ -2213,6 +2343,11 @@ export default function CarouselPage() {
               )}
               <div style={{ width: 1, background: "#333", margin: "0 4px" }} />
               <button
+                onClick={(e) => { e.stopPropagation(); setEditingIndex(i); }}
+                style={{ width: 28, height: 28, borderRadius: 4, border: "1px solid #6366F1", background: "#6366F1", color: "#fff", cursor: "pointer", fontSize: 13 }}
+                title="Edit this slide's text"
+              >✎</button>
+              <button
                 onClick={(e) => { e.stopPropagation(); !exporting && exportSlide(i); }}
                 disabled={exporting}
                 style={{ width: 28, height: 28, borderRadius: 4, border: "1px solid #10b981", background: "#10b981", color: "#fff", cursor: exporting ? "not-allowed" : "pointer", fontSize: 14, fontWeight: 700 }}
@@ -2252,14 +2387,14 @@ export default function CarouselPage() {
                 fontVariantNumeric: "tabular-nums",
               }}
             >
-              {i + 1}/{SLIDES.length} — {slide.type}
+              {i + 1}/{slides.length} — {slide.type}
             </div>
           </div>
         ))}
       </div>
 
       {/* Offscreen slides for export — always rendered at (0,0), invisible via opacity */}
-      {SLIDES.map((slide, i) => (
+      {slides.map((slide, i) => (
         <div
           key={`export-${i}`}
           ref={(el) => {
@@ -2277,7 +2412,7 @@ export default function CarouselPage() {
             fontFamily: preset.fontFamily,
           }}
         >
-          <Slide data={slide} preset={preset} index={i} total={SLIDES.length} bgType={bgType} />
+          <Slide data={slide} preset={preset} index={i} total={slides.length} bgType={bgType} />
         </div>
       ))}
 
@@ -2290,8 +2425,91 @@ export default function CarouselPage() {
           textAlign: "center",
         }}
       >
-        {t.footer(canvasW, canvasH, SLIDES.length)}
+        {t.footer(canvasW, canvasH, slides.length)}
       </div>
+
+      {/* Edit panel modal */}
+      {editingIndex !== null && slides[editingIndex] && (
+        <div
+          onClick={() => setEditingIndex(null)}
+          style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center" }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{ width: 520, maxWidth: "92vw", maxHeight: "85vh", overflowY: "auto", background: "#161616", border: "1px solid #333", borderRadius: 14, padding: 24, display: "flex", flexDirection: "column", gap: 14 }}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <h3 style={{ margin: 0, fontSize: 15, color: "#fff" }}>
+                Edit slide {editingIndex + 1}/{slides.length} — {slides[editingIndex].type}
+              </h3>
+              <button onClick={() => setEditingIndex(null)} style={{ border: "none", background: "transparent", color: "#888", fontSize: 18, cursor: "pointer" }}>✕</button>
+            </div>
+
+            {slides[editingIndex].type === "body" && (
+              <label style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 12, color: "#999" }}>
+                Title
+                <input
+                  type="text"
+                  value={slides[editingIndex].title ?? ""}
+                  onChange={(e) => setSlides((prev) => prev.map((s, idx) => idx === editingIndex ? { ...s, title: e.target.value } : s))}
+                  style={{ padding: "10px 12px", borderRadius: 8, border: "1px solid #333", background: "#1d1d1d", color: "#fff", fontSize: 14 }}
+                />
+              </label>
+            )}
+
+            <label style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 12, color: "#999" }}>
+              Text (one line per row)
+              <textarea
+                value={slides[editingIndex].text ?? ""}
+                onChange={(e) => setSlides((prev) => prev.map((s, idx) => idx === editingIndex ? { ...s, text: e.target.value } : s))}
+                rows={7}
+                style={{ padding: "10px 12px", borderRadius: 8, border: "1px solid #333", background: "#1d1d1d", color: "#fff", fontSize: 14, fontFamily: "inherit", resize: "vertical", lineHeight: 1.5 }}
+              />
+            </label>
+
+            <label style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 12, color: "#999" }}>
+              Highlight (must appear in the text above)
+              <input
+                type="text"
+                value={slides[editingIndex].highlight ?? ""}
+                onChange={(e) => setSlides((prev) => prev.map((s, idx) => idx === editingIndex ? { ...s, highlight: e.target.value || undefined } : s))}
+                style={{ padding: "10px 12px", borderRadius: 8, border: "1px solid #333", background: "#1d1d1d", color: "#fff", fontSize: 14 }}
+              />
+            </label>
+
+            {slides[editingIndex].type === "cta" && (
+              <label style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 12, color: "#999" }}>
+                Handle
+                <input
+                  type="text"
+                  value={slides[editingIndex].handle ?? ""}
+                  onChange={(e) => setSlides((prev) => prev.map((s, idx) => idx === editingIndex ? { ...s, handle: e.target.value } : s))}
+                  style={{ padding: "10px 12px", borderRadius: 8, border: "1px solid #333", background: "#1d1d1d", color: "#fff", fontSize: 14 }}
+                />
+              </label>
+            )}
+
+            <div style={{ display: "flex", justifyContent: "space-between", gap: 10, marginTop: 4 }}>
+              <div style={{ display: "flex", gap: 8 }}>
+                <button
+                  onClick={() => { if (editingIndex > 0) setEditingIndex(editingIndex - 1); }}
+                  disabled={editingIndex === 0}
+                  style={{ padding: "8px 14px", borderRadius: 8, border: "1px solid #333", background: "transparent", color: editingIndex === 0 ? "#555" : "#fff", cursor: editingIndex === 0 ? "default" : "pointer", fontSize: 13 }}
+                >← Prev</button>
+                <button
+                  onClick={() => { if (editingIndex < slides.length - 1) setEditingIndex(editingIndex + 1); }}
+                  disabled={editingIndex === slides.length - 1}
+                  style={{ padding: "8px 14px", borderRadius: 8, border: "1px solid #333", background: "transparent", color: editingIndex === slides.length - 1 ? "#555" : "#fff", cursor: editingIndex === slides.length - 1 ? "default" : "pointer", fontSize: 13 }}
+                >Next →</button>
+              </div>
+              <button
+                onClick={() => setEditingIndex(null)}
+                style={{ padding: "8px 20px", borderRadius: 8, border: "none", background: "#22C55E", color: "#fff", cursor: "pointer", fontSize: 13, fontWeight: 600 }}
+              >Done</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
     </FontScaleContext.Provider>
     </CanvasSizeContext.Provider>
