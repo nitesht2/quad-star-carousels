@@ -1968,6 +1968,38 @@ export default function CarouselPage() {
     }
   }, [genTopic, generating]);
 
+  // A/B hook generator
+  type HookVariant = { text: string; highlight?: string; style?: string };
+  const [hookVariants, setHookVariants] = useState<HookVariant[] | null>(null);
+  const [hooking, setHooking] = useState(false);
+  const generateHooks = useCallback(async () => {
+    const topic = genTopic.trim();
+    if (!topic || hooking) return;
+    setHooking(true);
+    setGenError("");
+    setHookVariants(null);
+    try {
+      const res = await fetch("/api/hooks", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ topic }) });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+      setHookVariants(data.hooks);
+    } catch (e) {
+      setGenError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setHooking(false);
+    }
+  }, [genTopic, hooking]);
+  const applyHook = useCallback((h: HookVariant) => {
+    setSlides((prev) => {
+      const next = [...prev];
+      const newHook: SlideData = { type: "hook", text: h.text, highlight: h.highlight, highlightStyle: "italic-box" };
+      if (next[0]?.type === "hook") next[0] = newHook;
+      else next.unshift(newHook);
+      return next;
+    });
+    setHookVariants(null);
+  }, []);
+
   const [fontId, setFontId] = useState<FontId>(DEFAULT_FONT);
   const [surfaceId, setSurfaceId] = useState<SurfaceId>(DEFAULT_SURFACE);
   const [accentId, setAccentId] = useState<AccentId>(DEFAULT_ACCENT);
@@ -2401,11 +2433,38 @@ export default function CarouselPage() {
               >
                 {generating ? "Writing..." : "✦ Generate"}
               </button>
+              <button
+                onClick={generateHooks}
+                disabled={hooking || !genTopic.trim()}
+                title="Generate 3 hook variants to A/B test"
+                style={{ padding: "9px 14px", minHeight: 36, borderRadius: 8, border: "1px solid #D8D0C0", background: "transparent", color: "#2E2A24", cursor: hooking ? "wait" : "pointer", fontSize: 13, fontWeight: 600, whiteSpace: "nowrap" }}
+                className="tb-btn"
+              >
+                {hooking ? "..." : "A/B Hooks"}
+              </button>
             </div>
           </div>
           {genError && (
             <div style={{ marginLeft: 100, fontSize: 12, color: "#C2402A" }}>
               {genError}
+            </div>
+          )}
+          {hookVariants && (
+            <div style={{ marginLeft: 100, display: "flex", flexDirection: "column", gap: 8, maxWidth: 760 }}>
+              <span style={{ fontSize: 11, color: "#8A8378", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em" }}>Pick a hook (replaces slide 1)</span>
+              <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                {hookVariants.map((h, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => applyHook(h)}
+                    className="tb-btn"
+                    style={{ flex: "1 1 220px", textAlign: "left", padding: 12, borderRadius: 10, border: "1px solid #D8D0C0", background: "#FFFFFF", cursor: "pointer" }}
+                  >
+                    <div style={{ fontSize: 10, color: "#E5683C", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 6 }}>{h.style || `Variant ${idx + 1}`}</div>
+                    <div style={{ fontSize: 14, color: "#1A1714", fontWeight: 700, lineHeight: 1.3, whiteSpace: "pre-line" }}>{h.text}</div>
+                  </button>
+                ))}
+              </div>
             </div>
           )}
           </>)}
