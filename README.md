@@ -20,6 +20,12 @@ Built for [@quad_star](https://www.tiktok.com/@quad_star) — AI tools and promp
 - **Click-to-edit** — ✎ on any slide opens an edit panel (text / title / highlight / handle) with prev/next nav
 - **Slide management** — add, delete, duplicate, and reorder slides directly in the editor (no fixed 7-slide limit)
 - **AI Generate** — type a topic, get 7 slides; supports OpenRouter (Grok default) or Anthropic, key stays server-side
+- **A/B hook generator** — get 3 distinct hook variants (confession / contrarian / open-loop), click one to apply to slide 1
+- **Per-slide AI images** — in the edit panel, describe an image and it generates + inserts an image slide (OpenAI gpt-image-1)
+
+**Insights + publishing**
+- **Analytics tracker** — log views / saves / comments per carousel; the 📊 Stats panel ranks by save rate so you make more of what works
+- **Schedule via Postiz** — render all slides and push to a connected Postiz channel on a schedule (requires a running Postiz + POSTIZ_API_KEY)
 
 **Layout + platform safety**
 - **Platform-safe defaults** — content stays clear of TikTok/IG/YT UI overlays
@@ -46,7 +52,22 @@ bun dev --port 3333
 # open http://localhost:3333
 ```
 
-Edit `src/slides.ts` → reload browser → click **Export All** top-right → 7 PNGs land in `~/Downloads/`.
+Everything is editable in the browser. To enable the AI features, create `.env.local`:
+
+```bash
+# AI text (pick one; OpenRouter is checked first)
+OPENROUTER_API_KEY=sk-or-...
+# OPENROUTER_MODEL=x-ai/grok-4.1-fast   # optional, this is the default
+# ANTHROPIC_API_KEY=sk-ant-...          # fallback if no OpenRouter key
+
+# AI images (optional — per-slide image gen)
+OPENAI_API_KEY=sk-...
+
+# Scheduling (optional — needs a running Postiz with a connected channel)
+POSTIZ_API_KEY=...
+```
+
+Restart the dev server after editing `.env.local`. Without keys, the editor and all export features still work; only the AI/schedule buttons need them.
 
 ---
 

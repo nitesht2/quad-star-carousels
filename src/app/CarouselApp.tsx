@@ -1939,6 +1939,13 @@ export default function CarouselPage() {
   // Stats / analytics modal
   const [showStats, setShowStats] = useState(false);
 
+  // Schedule (Postiz) modal
+  const [showSchedule, setShowSchedule] = useState(false);
+  const [scheduleCaption, setScheduleCaption] = useState("");
+  const [scheduleWhen, setScheduleWhen] = useState("");
+  const [scheduling, setScheduling] = useState(false);
+  const [scheduleMsg, setScheduleMsg] = useState("");
+
   // Edit panel
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
 
@@ -2237,6 +2244,34 @@ export default function CarouselPage() {
     setTimeout(() => setExportStatus(""), 2000);
   }, [captureSlide, slides]);
 
+  const submitSchedule = useCallback(async () => {
+    if (scheduling) return;
+    setScheduling(true);
+    setScheduleMsg("Rendering slides...");
+    try {
+      const imagesBase64: string[] = [];
+      for (let i = 0; i < slides.length; i++) {
+        const dataUrl = await captureSlide(i);
+        if (dataUrl) imagesBase64.push(dataUrl);
+        await new Promise((r) => setTimeout(r, 80));
+      }
+      setScheduleMsg("Sending to Postiz...");
+      const res = await fetch("/api/post", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ imagesBase64, caption: scheduleCaption, scheduleISO: scheduleWhen ? new Date(scheduleWhen).toISOString() : undefined }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+      setScheduleMsg(`Scheduled for ${new Date(data.scheduledFor).toLocaleString()} via channel ${data.integrationId}.`);
+      if (activeId) toggleStatus(activeId);
+    } catch (e) {
+      setScheduleMsg(`Error: ${e instanceof Error ? e.message : String(e)}`);
+    } finally {
+      setScheduling(false);
+    }
+  }, [scheduling, slides, captureSlide, scheduleCaption, scheduleWhen, activeId, toggleStatus]);
+
   const exportPdf = useCallback(async () => {
     setExporting(true);
     const isLandscape = canvasW > canvasH;
@@ -2354,6 +2389,9 @@ export default function CarouselPage() {
           <div style={{ marginLeft: "auto", display: "flex", gap: 8, alignItems: "center" }}>
             <button onClick={() => setShowStats(true)} title="View analytics across all carousels" style={{ padding: "8px 16px", minHeight: 36, borderRadius: 8, border: "1px solid #D8D0C0", background: "transparent", color: "#2E2A24", cursor: "pointer", fontSize: 13, fontWeight: 600 }} className="tb-btn">
               📊 Stats
+            </button>
+            <button onClick={() => { setScheduleMsg(""); setShowSchedule(true); }} title="Schedule this carousel via Postiz" style={{ padding: "8px 16px", minHeight: 36, borderRadius: 8, border: "1px solid #D8D0C0", background: "transparent", color: "#2E2A24", cursor: "pointer", fontSize: 13, fontWeight: 600 }} className="tb-btn">
+              🗓 Schedule
             </button>
             <button onClick={exportPdf} disabled={exporting} title="Download all slides as a single PDF" style={{ padding: "8px 16px", minHeight: 36, borderRadius: 8, border: "1px solid #D8D0C0", background: "transparent", color: exporting ? "#8A8378" : "#2E2A24", cursor: exporting ? "not-allowed" : "pointer", fontSize: 13, fontWeight: 600 }} className="tb-btn">
               ⬇ PDF
@@ -2809,6 +2847,36 @@ export default function CarouselPage() {
       >
         {t.footer(canvasW, canvasH, slides.length)}
       </div>
+
+      {/* Schedule (Postiz) modal */}
+      {showSchedule && (
+        <div onClick={() => !scheduling && setShowSchedule(false)} style={{ position: "fixed", inset: 0, background: "rgba(26,23,20,0.5)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ width: 520, maxWidth: "92vw", background: "#FBF8F2", border: "1px solid #E2DACB", borderRadius: 16, padding: 24, display: "flex", flexDirection: "column", gap: 14 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <h3 style={{ margin: 0, fontSize: 16, color: "#1A1714" }}>Schedule via Postiz</h3>
+              <button onClick={() => !scheduling && setShowSchedule(false)} style={{ border: "none", background: "transparent", color: "#8A8378", fontSize: 18, cursor: "pointer" }}>✕</button>
+            </div>
+            <p style={{ margin: 0, fontSize: 12, color: "#8A8378" }}>
+              Renders all {slides.length} slides and sends them to your first connected Postiz channel. Requires a running Postiz with POSTIZ_API_KEY set in .env.local.
+            </p>
+            <label style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 12, color: "#8A8378" }}>
+              Caption
+              <textarea value={scheduleCaption} onChange={(e) => setScheduleCaption(e.target.value)} rows={4} placeholder="Your caption + hashtags" style={{ padding: "10px 12px", borderRadius: 8, border: "1px solid #D8D0C0", background: "#FFFFFF", color: "#1A1714", fontSize: 14, resize: "vertical", fontFamily: "inherit" }} />
+            </label>
+            <label style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 12, color: "#8A8378" }}>
+              When (leave blank = ~5 min from now)
+              <input type="datetime-local" value={scheduleWhen} onChange={(e) => setScheduleWhen(e.target.value)} style={{ padding: "10px 12px", borderRadius: 8, border: "1px solid #D8D0C0", background: "#FFFFFF", color: "#1A1714", fontSize: 14 }} />
+            </label>
+            {scheduleMsg && <div style={{ fontSize: 13, color: scheduleMsg.startsWith("Error") ? "#C2402A" : "#3F7A4F" }}>{scheduleMsg}</div>}
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
+              <button onClick={() => !scheduling && setShowSchedule(false)} style={{ padding: "8px 16px", borderRadius: 8, border: "1px solid #D8D0C0", background: "transparent", color: "#2E2A24", cursor: "pointer", fontSize: 13 }}>Cancel</button>
+              <button onClick={submitSchedule} disabled={scheduling} style={{ padding: "8px 22px", borderRadius: 8, border: "none", background: scheduling ? "#EBE5D9" : "#E5683C", color: scheduling ? "#8A8378" : "#fff", cursor: scheduling ? "wait" : "pointer", fontSize: 13, fontWeight: 700 }}>
+                {scheduling ? "Working..." : "Schedule"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Stats / analytics modal */}
       {showStats && (
