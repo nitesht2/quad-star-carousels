@@ -53,6 +53,11 @@ function alignToFlex(a: AlignT): "flex-start" | "center" | "flex-end" {
 const SafeZoneContext = createContext(false);
 function useSafeZone() { return useContext(SafeZoneContext); }
 
+// Free-position offset for a slide's text block, in canvas px (1080-wide space)
+type Offset = { x: number; y: number };
+const SlideOffsetContext = createContext<Offset>({ x: 0, y: 0 });
+function useSlideOffset() { return useContext(SlideOffsetContext); }
+
 // Platform UI overlay zones for 1080x1920 (9:16). Worst-case = TikTok.
 // Each platform covers different chunks. Show all three when overlay is on.
 function SafeZoneOverlay() {
@@ -685,6 +690,7 @@ function SlideHook({
   const globalScale = useFontScale();
   const scale = globalScale * (data.fontScale ?? 1.0);
   const align = useSlideAlign();
+  const off = useSlideOffset();
   return (
     <div
       style={{
@@ -706,6 +712,7 @@ function SlideHook({
       <SafeZoneOverlay />
       {data.badge && <Badge text={data.badge} preset={preset} />}
       <div
+        data-textblock="1"
         style={{
           fontSize: Math.round(getAdaptiveFontSize(data.text || "", "hook") * 1.35 * scale),
           fontWeight: 800,
@@ -716,6 +723,7 @@ function SlideHook({
           position: "relative",
           textWrap: "balance" as const,
           textAlign: "center",
+          transform: `translate(${off.x}px, ${off.y}px)`,
         }}
       >
         {renderWithHighlight(data.text || "", data.highlight, preset.highlightColor, data.highlightStyle)}
@@ -778,6 +786,8 @@ function SlideBody({
   const scale = globalScale * (data.fontScale ?? 1.0);
   const isCta = data.type === "cta";
   const align = useSlideAlign();
+  const off = useSlideOffset();
+  const shift = `translate(${off.x}px, ${off.y}px)`;
   return (
     <div
       style={{
@@ -810,10 +820,10 @@ function SlideBody({
       )}
       {data.badge && <Badge text={data.badge} preset={preset} />}
       {data.title && (
-        <>
+        <div data-textblock="1" style={{ transform: shift, display: "flex", flexDirection: "column", alignItems: alignToFlex(align) }}>
           <SlideTitle text={data.title} preset={preset} highlight={data.highlight} highlightStyle={data.highlightStyle} scale={scale} />
           <TitleDivider preset={preset} />
-        </>
+        </div>
       )}
       {data.points ? (
         <div style={{ display: "flex", flexDirection: "column", position: "relative" }}>
@@ -843,6 +853,7 @@ function SlideBody({
         </div>
       ) : (
         <div
+          data-textblock="1"
           style={{
             fontSize: Math.round(getAdaptiveFontSize(data.text || "", "body") * scale * (isCta ? 1.25 : 1.0)),
             fontWeight: isCta ? 800 : (preset.bodyFontWeight ?? 600),
@@ -852,6 +863,7 @@ function SlideBody({
             letterSpacing: "-0.01em",
             position: "relative",
             textWrap: "balance" as const,
+            transform: shift,
           }}
         >
           {renderWithHighlight(data.text || "", data.highlight, preset.highlightColor, data.highlightStyle)}
@@ -1650,16 +1662,20 @@ function SlidePreview({
   index,
   total,
   bgType,
+  onDrag,
 }: {
   data: SlideData;
   preset: StylePreset;
   index: number;
   total: number;
   bgType: BgType;
+  onDrag?: (dxCanvas: number, dyCanvas: number) => void;
 }) {
   const { w: CANVAS_W, h: CANVAS_H } = useCanvasSize();
   const containerRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
+  const scaleRef = useRef(1);
+  scaleRef.current = scale;
 
   useEffect(() => {
     const el = containerRef.current;
@@ -1677,15 +1693,40 @@ function SlidePreview({
     return () => observer.disconnect();
   }, [CANVAS_W]);
 
+  // Drag the text block to reposition it freely (Canva-style)
+  const onPointerDown = useCallback((e: React.PointerEvent) => {
+    if (!onDrag) return;
+    const target = e.target as HTMLElement;
+    if (!target.closest('[data-textblock="1"]')) return; // only when grabbing the text
+    e.preventDefault();
+    e.stopPropagation();
+    let lastX = e.clientX, lastY = e.clientY;
+    const move = (ev: PointerEvent) => {
+      const s = scaleRef.current || 1;
+      const dx = (ev.clientX - lastX) / s;
+      const dy = (ev.clientY - lastY) / s;
+      lastX = ev.clientX; lastY = ev.clientY;
+      onDrag(dx, dy);
+    };
+    const up = () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+  }, [onDrag]);
+
   return (
     <div
       className="slide-preview-wrapper"
+      onPointerDown={onPointerDown}
       style={{
         width: "100%",
         aspectRatio: `${CANVAS_W}/${CANVAS_H}`,
         overflow: "hidden",
         borderRadius: 12,
         position: "relative",
+        cursor: onDrag ? "grab" : "default",
       }}
     >
       <div
@@ -2043,6 +2084,16 @@ export default function CarouselPage() {
   const [fontScale, setFontScale] = useState<number>(1.0);
   const [slideScales, setSlideScales] = useState<Record<number, number>>({});
   const [slideAligns, setSlideAligns] = useState<Record<number, AlignT>>({});
+  const [slideOffsets, setSlideOffsets] = useState<Record<number, Offset>>({});
+  const nudgeOffset = useCallback((i: number, dx: number, dy: number) => {
+    setSlideOffsets((prev) => {
+      const cur = prev[i] ?? { x: 0, y: 0 };
+      return { ...prev, [i]: { x: cur.x + dx, y: cur.y + dy } };
+    });
+  }, []);
+  const resetOffset = useCallback((i: number) => {
+    setSlideOffsets((prev) => { const n = { ...prev }; delete n[i]; return n; });
+  }, []);
   const [showSafeZones, setShowSafeZones] = useState(false);
   const [activeTab, setActiveTab] = useState<"content" | "style" | "layout">("content");
   const setSlideAlign = useCallback((i: number, a: AlignT) => {
@@ -2068,6 +2119,7 @@ export default function CarouselPage() {
   const clearOverrides = useCallback(() => {
     setSlideScales({});
     setSlideAligns({});
+    setSlideOffsets({});
   }, []);
   const addSlideAfter = useCallback((i: number) => {
     setSlides((prev) => {
@@ -2669,13 +2721,16 @@ export default function CarouselPage() {
               <FontScaleContext.Provider value={fontScale * (slideScales[i] ?? 1.0)}>
                 <SlideAlignContext.Provider value={slideAligns[i] ?? "center"}>
                   <SafeZoneContext.Provider value={showSafeZones}>
-                    <SlidePreview
-                      data={slide}
-                      preset={preset}
-                      index={i}
-                      total={slides.length}
-                      bgType={bgType}
-                    />
+                    <SlideOffsetContext.Provider value={slideOffsets[i] ?? { x: 0, y: 0 }}>
+                      <SlidePreview
+                        data={slide}
+                        preset={preset}
+                        index={i}
+                        total={slides.length}
+                        bgType={bgType}
+                        onDrag={(dx, dy) => nudgeOffset(i, dx, dy)}
+                      />
+                    </SlideOffsetContext.Provider>
                   </SafeZoneContext.Provider>
                 </SlideAlignContext.Provider>
               </FontScaleContext.Provider>
@@ -2775,6 +2830,7 @@ export default function CarouselPage() {
                 { icon: "→", title: "Move right", fn: () => moveSlide(i, 1), disabled: i === slides.length - 1 },
                 { icon: "⧉", title: "Duplicate slide", fn: () => duplicateSlide(i), disabled: false },
                 { icon: "+", title: "Add slide after", fn: () => addSlideAfter(i), disabled: false },
+                { icon: "⊕", title: "Reset text position", fn: () => resetOffset(i), disabled: !slideOffsets[i] },
                 { icon: "🗑", title: "Delete slide", fn: () => deleteSlide(i), disabled: slides.length <= 1, danger: true },
               ].map((op) => (
                 <button
@@ -2832,7 +2888,13 @@ export default function CarouselPage() {
             fontFamily: preset.fontFamily,
           }}
         >
-          <Slide data={slide} preset={preset} index={i} total={slides.length} bgType={bgType} />
+          <FontScaleContext.Provider value={fontScale * (slideScales[i] ?? 1.0)}>
+            <SlideAlignContext.Provider value={slideAligns[i] ?? "center"}>
+              <SlideOffsetContext.Provider value={slideOffsets[i] ?? { x: 0, y: 0 }}>
+                <Slide data={slide} preset={preset} index={i} total={slides.length} bgType={bgType} />
+              </SlideOffsetContext.Provider>
+            </SlideAlignContext.Provider>
+          </FontScaleContext.Provider>
         </div>
       ))}
 

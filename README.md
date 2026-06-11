@@ -30,6 +30,7 @@ Built for [@quad_star](https://www.tiktok.com/@quad_star) — AI tools and promp
 **Layout + platform safety**
 - **Platform-safe defaults** — content stays clear of TikTok/IG/YT UI overlays
 - **Visual safe-zone overlay** — toggle a debug layer showing where platform UI covers content (never bakes into exports)
+- **Drag to position** — grab a slide's text and move it anywhere on the canvas (Canva-style free positioning); ⊕ resets it
 - **Per-slide font scale + alignment** — granular control via overlay on each slide
 - **Global font size slider** — scale all slides together (0.5x ↔ 2.0x)
 
