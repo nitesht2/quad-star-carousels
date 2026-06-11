@@ -807,17 +807,6 @@ function SlideBody({
     >
       <SlideBackground bgType={bgType} slideIndex={index} preset={preset} />
       <SafeZoneOverlay />
-      {isCta && (
-        <div
-          style={{
-            position: "absolute",
-            inset: 0,
-            background: `radial-gradient(circle at center, ${preset.accentColor}26 0%, transparent 60%)`,
-            pointerEvents: "none",
-            zIndex: 0,
-          }}
-        />
-      )}
       {data.badge && <Badge text={data.badge} preset={preset} />}
       {data.title && (
         <div data-textblock="1" style={{ transform: shift, display: "flex", flexDirection: "column", alignItems: alignToFlex(align) }}>
