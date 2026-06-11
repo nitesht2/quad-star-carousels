@@ -1782,6 +1782,7 @@ const PROJECTS_KEY = "qsc-projects";
 const ACTIVE_KEY = "qsc-active-id";
 
 type LibraryEntry = { name: string; savedAt: number; slides: SlideData[] };
+type Metrics = { views?: number; saves?: number; comments?: number; postedAt?: number };
 type Project = {
   id: string;
   name: string;
@@ -1789,6 +1790,7 @@ type Project = {
   createdAt: number;
   updatedAt: number;
   slides: SlideData[];
+  metrics?: Metrics;
 };
 
 export default function CarouselPage() {
@@ -1924,7 +1926,18 @@ export default function CarouselPage() {
     });
   }, []);
 
+  const setMetric = useCallback((id: string, key: keyof Metrics, value: number) => {
+    setProjects((prev) => {
+      const next = prev.map((p) => (p.id === id ? { ...p, metrics: { ...p.metrics, [key]: value } } : p));
+      try { localStorage.setItem(PROJECTS_KEY, JSON.stringify(next)); } catch {}
+      return next;
+    });
+  }, []);
+
   const activeProject = projects.find((p) => p.id === activeId);
+
+  // Stats / analytics modal
+  const [showStats, setShowStats] = useState(false);
 
   // Edit panel
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
@@ -2280,6 +2293,9 @@ export default function CarouselPage() {
             </div>
           </div>
           <div style={{ marginLeft: "auto", display: "flex", gap: 8, alignItems: "center" }}>
+            <button onClick={() => setShowStats(true)} title="View analytics across all carousels" style={{ padding: "8px 16px", minHeight: 36, borderRadius: 8, border: "1px solid #D8D0C0", background: "transparent", color: "#2E2A24", cursor: "pointer", fontSize: 13, fontWeight: 600 }} className="tb-btn">
+              📊 Stats
+            </button>
             <button onClick={exportPdf} disabled={exporting} title="Download all slides as a single PDF" style={{ padding: "8px 16px", minHeight: 36, borderRadius: 8, border: "1px solid #D8D0C0", background: "transparent", color: exporting ? "#8A8378" : "#2E2A24", cursor: exporting ? "not-allowed" : "pointer", fontSize: 13, fontWeight: 600 }} className="tb-btn">
               ⬇ PDF
             </button>
@@ -2707,6 +2723,61 @@ export default function CarouselPage() {
       >
         {t.footer(canvasW, canvasH, slides.length)}
       </div>
+
+      {/* Stats / analytics modal */}
+      {showStats && (
+        <div onClick={() => setShowStats(false)} style={{ position: "fixed", inset: 0, background: "rgba(26,23,20,0.5)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ width: 760, maxWidth: "94vw", maxHeight: "85vh", overflowY: "auto", background: "#FBF8F2", border: "1px solid #E2DACB", borderRadius: 16, padding: 24 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+              <h3 style={{ margin: 0, fontSize: 16, color: "#1A1714" }}>Carousel Analytics</h3>
+              <button onClick={() => setShowStats(false)} style={{ border: "none", background: "transparent", color: "#8A8378", fontSize: 18, cursor: "pointer" }}>✕</button>
+            </div>
+            <p style={{ margin: "0 0 16px", fontSize: 12, color: "#8A8378" }}>
+              Enter the numbers from each platform after posting. Save rate (saves ÷ views) is the strongest signal for what to make more of.
+            </p>
+            {(() => {
+              const ranked = [...projects].sort((a, b) => ((b.metrics?.saves ?? 0) / Math.max(1, b.metrics?.views ?? 1)) - ((a.metrics?.saves ?? 0) / Math.max(1, a.metrics?.views ?? 1)));
+              const totals = projects.reduce((acc, p) => ({ views: acc.views + (p.metrics?.views ?? 0), saves: acc.saves + (p.metrics?.saves ?? 0), comments: acc.comments + (p.metrics?.comments ?? 0) }), { views: 0, saves: 0, comments: 0 });
+              const numStyle = { width: 78, padding: "6px 8px", borderRadius: 6, border: "1px solid #D8D0C0", background: "#FFFFFF", color: "#1A1714", fontSize: 13, textAlign: "right" as const, fontVariantNumeric: "tabular-nums" as const };
+              return (
+                <>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 90px 90px 90px 70px", gap: 8, alignItems: "center", fontSize: 11, fontWeight: 700, color: "#8A8378", textTransform: "uppercase", letterSpacing: "0.04em", padding: "0 4px 8px" }}>
+                    <span>Carousel</span><span style={{ textAlign: "right" }}>Views</span><span style={{ textAlign: "right" }}>Saves</span><span style={{ textAlign: "right" }}>Comments</span><span style={{ textAlign: "right" }}>Save %</span>
+                  </div>
+                  {ranked.map((p) => {
+                    const v = p.metrics?.views ?? 0, s = p.metrics?.saves ?? 0;
+                    const rate = v > 0 ? ((s / v) * 100).toFixed(1) : "—";
+                    return (
+                      <div key={p.id} style={{ display: "grid", gridTemplateColumns: "1fr 90px 90px 90px 70px", gap: 8, alignItems: "center", padding: "7px 4px", borderTop: "1px solid #EFE8DB" }}>
+                        <span style={{ fontSize: 13, color: "#1A1714", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          <span style={{ display: "inline-block", width: 7, height: 7, borderRadius: "50%", marginRight: 7, background: p.status === "posted" ? "#3F9C5C" : "#C4BCAE" }} />
+                          {p.name}
+                        </span>
+                        <input type="number" min={0} value={p.metrics?.views ?? ""} placeholder="0" onChange={(e) => setMetric(p.id, "views", Math.max(0, parseInt(e.target.value) || 0))} style={numStyle} />
+                        <input type="number" min={0} value={p.metrics?.saves ?? ""} placeholder="0" onChange={(e) => setMetric(p.id, "saves", Math.max(0, parseInt(e.target.value) || 0))} style={numStyle} />
+                        <input type="number" min={0} value={p.metrics?.comments ?? ""} placeholder="0" onChange={(e) => setMetric(p.id, "comments", Math.max(0, parseInt(e.target.value) || 0))} style={numStyle} />
+                        <span style={{ textAlign: "right", fontSize: 13, fontWeight: 700, color: rate === "—" ? "#C4BCAE" : "#E5683C", fontVariantNumeric: "tabular-nums" }}>{rate === "—" ? "—" : `${rate}%`}</span>
+                      </div>
+                    );
+                  })}
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 90px 90px 90px 70px", gap: 8, padding: "10px 4px 0", borderTop: "2px solid #E2DACB", marginTop: 4, fontSize: 13, fontWeight: 700, color: "#1A1714" }}>
+                    <span>Total</span>
+                    <span style={{ textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{totals.views.toLocaleString()}</span>
+                    <span style={{ textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{totals.saves.toLocaleString()}</span>
+                    <span style={{ textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{totals.comments.toLocaleString()}</span>
+                    <span style={{ textAlign: "right", color: "#E5683C" }}>{totals.views > 0 ? `${((totals.saves / totals.views) * 100).toFixed(1)}%` : "—"}</span>
+                  </div>
+                  {ranked[0]?.metrics?.views ? (
+                    <div style={{ marginTop: 16, padding: 12, borderRadius: 10, background: "#FFF3EC", border: "1px solid #F2D3C4", fontSize: 13, color: "#7A3A22" }}>
+                      🏆 Top by save rate: <strong>{ranked[0].name}</strong>. Make more like this one.
+                    </div>
+                  ) : null}
+                </>
+              );
+            })()}
+          </div>
+        </div>
+      )}
 
       {/* Edit panel modal */}
       {editingIndex !== null && slides[editingIndex] && (
