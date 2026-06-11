@@ -2000,6 +2000,33 @@ export default function CarouselPage() {
     setHookVariants(null);
   }, []);
 
+  // Per-slide AI image generation
+  const [imgPrompt, setImgPrompt] = useState("");
+  const [imgLoading, setImgLoading] = useState(false);
+  const [imgError, setImgError] = useState("");
+  const generateImageForSlide = useCallback(async (i: number) => {
+    const prompt = imgPrompt.trim();
+    if (!prompt || imgLoading) return;
+    setImgLoading(true);
+    setImgError("");
+    try {
+      const res = await fetch("/api/image", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ prompt }) });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+      setSlides((prev) => {
+        const next = [...prev];
+        const imgSlide: SlideData = { type: "image", imageSrc: data.dataUrl, title: prev[i]?.title, imageCaption: prompt };
+        next.splice(i + 1, 0, imgSlide);
+        return next;
+      });
+      setImgPrompt("");
+    } catch (e) {
+      setImgError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setImgLoading(false);
+    }
+  }, [imgPrompt, imgLoading]);
+
   const [fontId, setFontId] = useState<FontId>(DEFAULT_FONT);
   const [surfaceId, setSurfaceId] = useState<SurfaceId>(DEFAULT_SURFACE);
   const [accentId, setAccentId] = useState<AccentId>(DEFAULT_ACCENT);
@@ -2898,6 +2925,28 @@ export default function CarouselPage() {
                 />
               </label>
             )}
+
+            {/* AI image — inserts a generated image slide after this one */}
+            <div style={{ borderTop: "1px solid #EFE8DB", paddingTop: 14, display: "flex", flexDirection: "column", gap: 8 }}>
+              <span style={{ fontSize: 12, color: "#8A8378", fontWeight: 600 }}>✦ AI image (adds a new image slide after this one)</span>
+              <div style={{ display: "flex", gap: 8 }}>
+                <input
+                  type="text"
+                  value={imgPrompt}
+                  onChange={(e) => setImgPrompt(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") generateImageForSlide(editingIndex); }}
+                  placeholder='Describe the image, e.g. "a robot reading email"'
+                  disabled={imgLoading}
+                  style={{ flex: 1, padding: "10px 12px", borderRadius: 8, border: "1px solid #D8D0C0", background: "#FFFFFF", color: "#1A1714", fontSize: 13 }}
+                />
+                <button
+                  onClick={() => generateImageForSlide(editingIndex)}
+                  disabled={imgLoading || !imgPrompt.trim()}
+                  style={{ padding: "10px 16px", borderRadius: 8, border: "none", background: imgLoading ? "#EBE5D9" : "#A855F7", color: imgLoading ? "#8A8378" : "#fff", cursor: imgLoading ? "wait" : "pointer", fontSize: 13, fontWeight: 600, whiteSpace: "nowrap" }}
+                >{imgLoading ? "Drawing..." : "Generate"}</button>
+              </div>
+              {imgError && <span style={{ fontSize: 12, color: "#C2402A" }}>{imgError}</span>}
+            </div>
 
             <div style={{ display: "flex", justifyContent: "space-between", gap: 10, marginTop: 4 }}>
               <div style={{ display: "flex", gap: 8 }}>
